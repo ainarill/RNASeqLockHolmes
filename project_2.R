@@ -22,28 +22,55 @@ df_paired <- df_filt[df_filt$X11>0,]
 paired_mask <- substr(colnames(lclse),9,12) %in% rownames(df_paired)
 
 lclse.paired<- lclse[,paired_mask]
+dge.paired <- dge[,paired_mask]
 table(lclse.paired$type)
 
-# ------------------------------------------------------------------------------------------------------------
 
-# Having an overview 
+# ------------------------------------------------------------------------------------------------------------
+# Analyze the sequencing depth
+sampledepth <- round(dge.paired$sample$lib.size / 1e6, digits=1)
+names(sampledepth) <- substr(colnames(lclse.paired), 6, 12)
+sort(sampledepth)
+ord <- order(dge.paired$sample$lib.size)
+barplot(dge.paired$sample$lib.size[ord]/1e+06, las = 1, ylab = "Millions of reads", xlab = "Samples",
+        col = c("cyan", "orange")[lclse.paired$type] )
+legend("topleft", c("Normal", "Tumor"), fill = c("cyan", "orange"), inset = 0.01)
+
+# TODO ! Possibly remove too poor sequencing depth 
+
+# ------------------------------------------------------------------------------------------------------------
+# Overview Gender vs Coverage
 ord <- order(dge$sample$lib.size)
 barplot(dge$sample$lib.size[ord]/1e+06, las = 1, ylab = "Millions of reads", xlab = "Samples",
         col = c("cyan", "orange")[lclse$gender[ord]], border=NA )
 legend("topleft", c("Female", "Male"), fill = c("cyan", "orange"), inset = 0.01)
 
+# ------------------------------------------------------------------------------------------------------------
 #CPM scaling - within sample normalization
-CPM <- t(t(dge$counts)/(dge$samples$lib.size/1e+06))
-assays(lclse)$logCPM <- cpm(dge, log = TRUE, prior.count = 0.25) 
-assays(lclse)$logCPM[1:3, 1:7]
+CPM <- t(t(dge.paired$counts)/(dge.paired$samples$lib.size/1e+06))
+assays(lclse.paired)$logCPM <- cpm(dge.paired, log = TRUE, prior.count = 0.25) 
+#assays(lclse.paired)$logCPM[1:3, 1:7]
 
 
 # PLOTTING
-#par(mfrow = c(1, 2), mar = c(4, 5, 1, 1))
-#multidensity(as.list(as.data.frame(CPM)), xlab = "CPM", legend = NULL, main = "",
-            # cex.axis = 1.2, cex.lab = 1.5, las = 1)
-#multidensity(as.list(as.data.frame(assays(lclse)$logCPM)), xlab = "log2 CPM", legend = NULL,
-            #main = "", cex.axis = 1.2, cex.lab = 1.5, las = 1)
+tumor_mask <- lclse.paired$type == "tumor"
+non_tumor_mask <- lclse.paired$type == "normal"
+lclse_tumor <- lclse.paired[,tumor_mask]
+lclse_control <- lclse.paired[,non_tumor_mask]
+# Plot alone
+par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
+multidensity(as.list(as.data.frame(assays(lclse.paired)$logCPM)), xlab = "log2 CPM", legend = NULL,
+             main = "", cex.axis = 1.2, cex.lab = 1.5, las = 1)
+
+# plot divided by tumor and control for a better overview
+par(mfrow = c(1, 2), mar = c(4, 5, 1, 1))
+multidensity(as.list(as.data.frame(assays(lclse_tumor)$logCPM)), xlab = "log2 CPM", legend = NULL,
+           main = "", cex.axis = 1.2, cex.lab = 1.5, las = 1)
+multidensity(as.list(as.data.frame(assays(lclse_control)$logCPM)), xlab = "log2 CPM", legend = NULL,
+             main = "", cex.axis = 1.2, cex.lab = 1.5, las = 1)
+
+
+
 
 #par(mfrow = c(1, 2), mar = c(4, 5, 1, 1)) 
 #multidensity(as.list(as.data.frame(assays(lclse)$logCPM)), xlab = "log2 CPM", legend = NULL,
@@ -205,81 +232,10 @@ sampleDendrogram <- dendrapply(sampleDendrogram,
 plot(sampleDendrogram, main="Hierarchical clustering of samples")
 legend("topright", paste("Batch", sort(unique(batch)), levels(factor(tss))), fill=sort(unique(batch)))
 
-
-# --------------------------- Selecting the paired Samples for paired test analysis
-
-# Found the ones that are potentially paired  - same patient 
-
-# Find the paired samples and returns a list with the patient IDs that have a paired sample
-find_paired_samples <- function(lclse){
-  found <- c()
-  paired <- c()
-  for(barcode in colnames(lclse)){
-    patient  <- substr(barcode, 9,12)
-    if(is.element(patient,found)){ paired <- c(paired,patient) }
-    else{ found <- c(found, patient) }
-  }
-  return(paired)
+resetPar <- function() {
+  dev.new()
+  op <- par(no.readonly = TRUE)
+  dev.off()
+  op
 }
-
-# Function that checks, given a vector of samples of the same patient, wether these 
-# are both from tumor and non tumor samples. If they are from both, it returns TRUE. 
-is_t_and_nt<- function(patient_samples){
-  t_found <- FALSE; nt_found<- FALSE
-  for (patient_sample in patient_samples){
-    t_id <- substr(patient_sample, 14, 15)
-    if(startsWith(t_id, "0")){  t_found<-TRUE }
-    else if (startsWith(t_id, "1")){ nt_found<-TRUE }
-  } 
-  if (t_found && nt_found){
-    return(TRUE)
-  }else{
-    return(FALSE)
-  }
-}
-
-# Filters out from the paired ones the ones that do not have both tumor and non tumor samples available
-filter_ones_with_t_and_nt <- function(paired, lclse){
-  filtered_paired <- c()
-  for (patientcode in paired){
-    patient_samples <- c()
-    for(barcode in colnames(lclse)){
-      patient  <- substr(barcode, 9,12)
-      if(patient == patientcode){
-        patient_samples <- c(patient_samples,barcode)
-      }
-    }
-    if (is_t_and_nt(patient_samples)){
-      filtered_paired <- c(filtered_paired,patient_samples)
-    }
-  }
-  return(filtered_paired)
-}
-
-
-
-# Get the paired, tumor and non tumor samples
-paired <- find_paired_samples(lclse)
-paired
-filter_ones_with_t_and_nt(paired, lclse)
-
-mask_paired <- is.element(colnames(lclse),filtered_paired)
-lclse.paired <- lclse[,mask_paired]
-dge.paired <- dge[,mask_paired]
-table(lclse.paired$type)
-
-lclse<- lclse.paired
-dge<-dge.paired
-
-# Having an overview 
-ord <- order(dge$sample$lib.size)
-barplot(dge$sample$lib.size[ord]/1e+06, las = 1, ylab = "Millions of reads", xlab = "Samples",
-        col = c("cyan", "orange")[lclse$gender[ord]], border=NA )
-legend("topleft", c("Female", "Male"), fill = c("cyan", "orange"), inset = 0.01)
-
-#CPM scaling - within sample normalization
-CPM <- t(t(dge$counts)/(dge$samples$lib.size/1e+06))
-assays(lclse)$logCPM <- cpm(dge, log = TRUE, prior.count = 0.25) 
-assays(lclse)$logCPM[1:3, 1:7]
-
 
