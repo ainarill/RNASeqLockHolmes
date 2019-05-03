@@ -31,6 +31,7 @@ table(lclse.paired$type)
 sampledepth <- round(dge.paired$sample$lib.size / 1e6, digits=1)
 names(sampledepth) <- substr(colnames(lclse.paired), 6, 12)
 sort(sampledepth)
+par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
 ord <- order(dge.paired$sample$lib.size)
 barplot(dge.paired$sample$lib.size[ord]/1e+06, las = 1, ylab = "Millions of reads", xlab = "Samples",
         col = c("cyan", "orange")[lclse.paired$type] )
@@ -40,9 +41,9 @@ legend("topleft", c("Normal", "Tumor"), fill = c("cyan", "orange"), inset = 0.01
 
 # ------------------------------------------------------------------------------------------------------------
 # Overview Gender vs Coverage
-ord <- order(dge$sample$lib.size)
-barplot(dge$sample$lib.size[ord]/1e+06, las = 1, ylab = "Millions of reads", xlab = "Samples",
-        col = c("cyan", "orange")[lclse$gender[ord]], border=NA )
+ord <- order(dge.paired$sample$lib.size)
+barplot(dge.paired$sample$lib.size[ord]/1e+06, las = 1, ylab = "Millions of reads", xlab = "Samples",
+        col = c("cyan", "orange")[lclse.paired$gender[ord]] )
 legend("topleft", c("Female", "Male"), fill = c("cyan", "orange"), inset = 0.01)
 
 # ------------------------------------------------------------------------------------------------------------
@@ -50,9 +51,7 @@ legend("topleft", c("Female", "Male"), fill = c("cyan", "orange"), inset = 0.01)
 CPM <- t(t(dge.paired$counts)/(dge.paired$samples$lib.size/1e+06))
 assays(lclse.paired)$logCPM <- cpm(dge.paired, log = TRUE, prior.count = 0.25) 
 #assays(lclse.paired)$logCPM[1:3, 1:7]
-
-
-# PLOTTING
+# visualizing
 tumor_mask <- lclse.paired$type == "tumor"
 non_tumor_mask <- lclse.paired$type == "normal"
 lclse_tumor <- lclse.paired[,tumor_mask]
@@ -70,21 +69,16 @@ multidensity(as.list(as.data.frame(assays(lclse_control)$logCPM)), xlab = "log2 
              main = "", cex.axis = 1.2, cex.lab = 1.5, las = 1)
 
 
-
-
-#par(mfrow = c(1, 2), mar = c(4, 5, 1, 1)) 
-#multidensity(as.list(as.data.frame(assays(lclse)$logCPM)), xlab = "log2 CPM", legend = NULL,
-#                                                       main = "", cex.axis = 1.2, cex.lab = 1.5, las = 1)
-#boxplot(assays(lclse)$logCPM, col = "gray", xlab = "Samples", ylab = expression(log[2] *
-#                                                                                  "CPM"), cex.axis = 1.2, cex.lab = 1.5, las = 1)
-
-# Filter out genes based on expression values
-
-# Observe the distribution of expression values
-avgexp <- rowMeans(assays(lclse)$logCPM)
+# -------------------------------------------------------
+# Distribution of expression among genes
+avgexp <- rowMeans(assays(lclse.paired)$logCPM)
+par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
 hist(avgexp, xlab = expression(log[2] * "CPM"), main = "", las = 1, col = "gray")
 abline(v = log(8.3), col = "red", lwd = 2)
 cpmcutoff <- round(10/min(dge$sample$lib.size/1e+06), digits = 1)
+# Filter out genes based on expression values
+
+
 
 # Eliminating from cutoff
 nsamplescutoff <- min(table(lclse$gender))
