@@ -48,17 +48,21 @@ coadse <- readRDS(file.path("rawCounts", "seCOAD.rds"))
 coadse
 ```
 
-In this RNA-seq data we have a total of 524 samples (483 tumor samples and 41 non-tumor samples). 
+In this TCGA RNA-seq data we have a total of 524 samples (483 tumor samples and 41 non-tumor samples). 
 In order to know more about the data, we explore the `colData` column, that corresponds to clinical
 variables, and their corresponding metadata.
 
 ```{r}
 dim(colData(coadse))
+```
+We have a total of 524 samples that have 549 clinical variables/factors that could be analysed. However,
+we are not going to explore all these variables, but those that can have more relenace in the data of study.
+```{r}
 colData(coadse)[1:5, 1:5]
+```
+```{r}
 mcols(colData(coadse), use.names=TRUE)
 ```
-
-
 These metadata consists of two columns of information about the clinical variables.
 One called `labelDescription` contains a succint description of the variable, often
 not more self-explanatory than the variable name itself, and the other called
@@ -67,31 +71,38 @@ identifier can be use in https://cdebrowser.nci.nih.gov to search for further
 information about the associated clinical variable using the `Advanced search`
 form and the `Public ID` attribute search.
 
-Now, explore the row (feature) data.
+Now, explore the row (feature) data. 
 
 ```{r}
-rowData(se)
-rowRanges(se)
+rowData(coadse)
 ```
+```{r}
+rowRanges(coadse)
+```
+By using the `rowData` and `rowRanges` functions we can see information about the
+features of interest. In this case each row represents a gene transcript and we 
+can see information about the length, the GC content, the chromosome where it is 
+located, the strand (forward or reverse), etc. 
 
 To perform quality assessment and normalization we need first to load the
-[edgeR](http://bioconductor.org/packages/edgeR) R/Bioconductor package and
-create a `DGEList' object.
+[edgeR](http://bioconductor.org/packages/edgeR) R/Bioconductor package, 
+create a `DGEList` object and store it in the `results` folder.
 
 ```{r, message=FALSE}
 library(edgeR)
-
-dge <- DGEList(counts=assays(se)$counts, genes=mcols(se))
+dge <- DGEList(counts=assays(coadse)$counts, genes=mcols(coadse))
 saveRDS(dge, file.path("results", "dge.rds"))
 ```
 
 Now calculate $\log_2$ CPM values of expression and put them as an additional
-assay element to ease their manipulation.
+assay element to ease their manipulation. 
 
 ```{r}
-assays(se)$logCPM <- cpm(dge, log=TRUE, prior.count=0.5)
-assays(se)$logCPM[1:5, 1:5]
+assays(coadse)$logCPM <- cpm(dge, log=TRUE, prior.count=0.5)
+assays(coadse)$logCPM[1:5, 1:5]
 ```
+As we can see, for each sample there are different CPM (Counts Per Million) values
+of expression. Negative ones correspond to very low expressed samples. 
 
 ## Sequencing depth
 
