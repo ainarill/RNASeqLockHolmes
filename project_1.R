@@ -1,191 +1,334 @@
-# GET THE PACKAGES
-suppressPackageStartupMessages({
-    library(edgeR)
-    library(SummarizedExperiment)
-    library(geneplotter)
-    library(BiocStyle)
-  }
-)
-# ------------------------------------------------------------------------------------------------------------
+---
+output:
+  BiocStyle::html_document
+---
 
-# GET THE DATA 
-data <- readRDS("/Users/luisasantus/Downloads/seCOAD.rds")
-lclse<-data
-dge <- DGEList(counts = assays(lclse)$counts, genes = as.data.frame(rowData(lclse)))
-mask_remove_na_tumor <-!is.na(lclse$tumor_status)
-mask_remove_na_tumor
-lclse.test <- lclse[,mask_remove_na_tumor]
+<!---
+The following chunk of code, which should not be shown in the resulting document (echo=FALSE)
+sets up global processing options, such as forcing 'knitr' to stop when an error
+in the R code is encountered, caching of the results in the 'cache'
+directory and asking 'knitr' to figure out automatically the dependencies among
+code chunks to re-calculate cached results (autodep=TRUE).
 
-# ------------------------------------------------------------------------------------------------------------
+Other options could be changing the name of the directory where figures end up
+('figure' by default), etc. For a full account of 'knitr' options please consult
+http://yihui.name/knitr/options
 
-# Having an overview 
-ord <- order(dge$sample$lib.size)
-barplot(dge$sample$lib.size[ord]/1e+06, las = 1, ylab = "Millions of reads", xlab = "Samples",
-        col = c("cyan", "orange")[lclse$gender[ord]], border=NA )
-legend("topleft", c("Female", "Male"), fill = c("cyan", "orange"), inset = 0.01)
-
-#CPM scaling - within sample normalization
-CPM <- t(t(dge$counts)/(dge$samples$lib.size/1e+06))
-assays(lclse)$logCPM <- cpm(dge, log = TRUE, prior.count = 0.25) 
-assays(lclse)$logCPM[1:3, 1:7]
+At the end of the chunk a 'cat()' call is made to dump a CSS file that gives
+a better look-and-feel than the knitr default one. See the source css/ieo.css
+and the resulting projectTemplate.html to understand where this is being dumpted.
+--->
 
 
-# PLOTTING
-#par(mfrow = c(1, 2), mar = c(4, 5, 1, 1))
-#multidensity(as.list(as.data.frame(CPM)), xlab = "CPM", legend = NULL, main = "",
-            # cex.axis = 1.2, cex.lab = 1.5, las = 1)
-#multidensity(as.list(as.data.frame(assays(lclse)$logCPM)), xlab = "log2 CPM", legend = NULL,
-            #main = "", cex.axis = 1.2, cex.lab = 1.5, las = 1)
+```{r setup, cache=FALSE, echo=FALSE, results='hide', message=FALSE}
+library(knitr)
 
-#par(mfrow = c(1, 2), mar = c(4, 5, 1, 1)) 
-#multidensity(as.list(as.data.frame(assays(lclse)$logCPM)), xlab = "log2 CPM", legend = NULL,
-#                                                       main = "", cex.axis = 1.2, cex.lab = 1.5, las = 1)
-#boxplot(assays(lclse)$logCPM, col = "gray", xlab = "Samples", ylab = expression(log[2] *
-#                                                                                  "CPM"), cex.axis = 1.2, cex.lab = 1.5, las = 1)
+opts_chunk$set(cache=TRUE,
+               cache.path="cache/QA",
+               cache.extra=R.version.string,
+               autodep=TRUE,
+               fig.align="center",
+               comment="")
+```
 
-# Filter out genes based on expression values
+# Quality assessment
 
-# Observe the distribution of expression values
-avgexp <- rowMeans(assays(lclse)$logCPM)
-hist(avgexp, xlab = expression(log[2] * "CPM"), main = "", las = 1, col = "gray")
-abline(v = log(8.3), col = "red", lwd = 2)
-cpmcutoff <- round(10/min(dge$sample$lib.size/1e+06), digits = 1)
+## Data import
 
-# Eliminating from cutoff
-nsamplescutoff <- min(table(lclse$gender))
-mask <- rowSums(cpm(dge) > cpmcutoff) >= nsamplescutoff
-lclse.filt <- lclse[mask, ]
+We start importing the raw table of counts.
+
+<!--
+The option 'message=FALSE' avoid dumping R messages such as "Loading required package: methods"
+into the output of the report.
+-->
+
+```{r, message=FALSE}
+library(SummarizedExperiment)
+coadse <- readRDS(file.path("rawCounts", "seCOAD.rds"))
+coadse
+```
+
+In this TCGA RNA-seq data we have a total of 524 samples (483 tumor samples and 41 non-tumor samples). 
+In order to know more about the data, we explore the `colData` column, that corresponds to clinical
+variables, and their corresponding metadata.
+
+```{r}
+dim(colData(coadse))
+```
+We have a total of 524 samples that have 549 clinical variables/factors that could be analysed. However,
+we are not going to explore all these variables, but those that can have more relenace in the data of study.
+```{r}
+colData(coadse)[1:5, 1:5]
+```
+```{r}
+mcols(colData(coadse), use.names=TRUE)
+```
+These metadata consists of two columns of information about the clinical variables.
+One called `labelDescription` contains a succint description of the variable, often
+not more self-explanatory than the variable name itself, and the other called
+'CDEID' corresponds to the so-called `Common Data Element (CDE)` identifier. This
+identifier can be use in https://cdebrowser.nci.nih.gov to search for further
+information about the associated clinical variable using the `Advanced search`
+form and the `Public ID` attribute search.
+
+Now, explore the row (feature) data. 
+
+```{r}
+rowData(coadse)
+```
+```{r}
+rowRanges(coadse)
+```
+By using the `rowData` and `rowRanges` functions we can see information about the
+features of interest. In this case each row represents a gene transcript and we 
+can see information about the length, the GC content, the chromosome where it is 
+located, the strand (forward or reverse), etc. 
+
+To perform quality assessment and normalization we need first to load the
+[edgeR](http://bioconductor.org/packages/edgeR) R/Bioconductor package, 
+create a `DGEList` object and store it in the `results` folder.
+
+```{r, message=FALSE}
+library(edgeR)
+dge <- DGEList(counts=assays(coadse)$counts, genes=mcols(coadse))
+saveRDS(dge, file.path("results", "dge.rds"))
+```
+
+Now calculate $\log_2$ CPM values of expression and put them as an additional
+assay element to ease their manipulation.
+
+```{r}
+assays(coadse)$logCPM <- cpm(dge, log=TRUE, prior.count=0.5)
+assays(coadse)$logCPM[1:5, 1:5]
+```
+
+## Sequencing depth
+
+Let's examine the sequencing depth in terms of total number of sequence read counts
+mapped to the genome per sample. Figure \@ref(fig:libsizes) below shows the
+sequencing depth per sample, also known as library sizes, in increasing order.
+
+<!---
+you can control the height and width in pixels of the figure with 'out.height' and
+'out.width'. Figures are automatically numbered, to refer to them in the main test
+you should use the notation shown above as \@ref(fig:xxxx) with xxxx being the label
+in the code chunk that also gives the filename of the figure. This name must be unique
+--->
+
+```{r libsizes, echo=FALSE, out.width="600px", fig.cap="Library sizes in increasing order."}
+ord <- order(dge$sample$lib.size/1e6)
+barplot(dge$sample$lib.size[ord]/1e6, las=1, ylab="Millions of reads",
+                xlab="Samples", col=c("blue", "red")[(se$type[ord] == "tumor") + 1])
+legend("topleft", c("tumor", "normal"), fill=c("red", "blue"), inset=0.01)
+```
+This figure reveals substantial differences in sequencing depth between samples
+and we may consider discarding those samples whose depth is substantially lower
+than the rest. To identify who are these samples we may simply look at the
+actual numbers including portion of the sample identifier that distinguishes them.
+
+```{r}
+sampledepth <- round(dge$sample$lib.size / 1e6, digits=1)
+names(sampledepth) <- substr(colnames(se), 6, 12)
+sort(sampledepth)
+```
+
+## Distribution of expression levels among samples
+
+Let's look at the distribution of expression values per sample in terms of
+logarithmic CPM units. Due to the large number of samples, we display tumor
+and normal samples separately, and are shown in Figure \@ref(fig:distRawExp)
+
+<!---
+the option echo=FALSE hides the R code. When plotting in general one does not
+want to see the code. Options fig.height and fig.width control height and width
+of the plot in inches while out.height and out.width do it in the final output
+file; see http://yihui.name/knitr/options for full details.
+--->
+
+```{r distRawExp, echo=FALSE, fig.height=4, fig.width=10, out.width="800px", fig.cap="Non-parametric density distribution of expression profiles per sample.", message=FALSE}
+library(geneplotter)
+par(mfrow=c(1, 2))
+multidensity(as.list(as.data.frame(assays(se[, se$type == "tumor"])$logCPM)),
+                          xlab="log 2 CPM", legend=NULL, main="Tumor samples", las=1)
+multidensity(as.list(as.data.frame(assays(se[, se$type == "normal"])$logCPM)),
+                          xlab="log 2 CPM", legend=NULL, main="Normal samples", las=1)
+```
+
+We do not appreciate substantial differences between the samples in the
+distribution of expression values.
+
+## Distribution of expression levels among genes
+
+Let's calculate now the average expression per gene through all the samples.
+Figure \@ref(fig:exprdist) shows the distribution of those values across genes.
+
+```{r exprdist, echo=FALSE, out.width="400px", fig.cap="Distribution of average expression level per gene."}
+avgexp <- rowMeans(assays(se)$logCPM)
+hist(avgexp, xlab="log2 CPM", main="", las=1)
+abline(v=1, col="red", lwd=2)
+```
+
+## Filtering of lowly-expressed genes
+
+In the light of this plot, we may consider a cutoff of 1 log CPM unit as minimum value
+of expression to select genes being expressed across samples. Using this cutoff we proceed
+to filter out lowly-expressed genes.
+
+```{r}
+mask <- avgexp > 1
+dim(se)
+se.filt <- se[mask, ]
+dim(se.filt)
 dge.filt <- dge[mask, ]
-dim(lclse.filt)
-#--- DGE FILT NOW CONTAINS LESS GENES. 
+dim(dge.filt)
+```
 
-# plotting
-par(mar = c(4, 5, 1, 1))
-h <- hist(avgexp, xlab = expression("Expression level (" * log[2] * "CPM)"), main = "",
-          las = 1, col = "grey", cex.axis = 1.2, cex.lab = 1.5)
-x <- cut(rowMeans(assays(lclse.filt)$logCPM), breaks = h$breaks)
-lines(h$mids, table(x), type = "h", lwd = 10, lend = 1, col = "darkred")
-legend("topright", c("All genes", "Filtered genes"), fill = c("grey", "darkred"))
+Store un-normalized versions of the filtered expression data.
 
-# Quality assesment : MA plots
-dge$samples$group <- lclse$gender
-table(dge$samples$group)
-dge.filt$samples$group <- lclse$gender
-# REMOVING NAS
-mask <- !is.na(dge$samples$group)
-lclse.filt_na <- lclse.filt[, mask]
-dge.filt_na <- dge.filt[,mask ]
-# Plotting
-plotSmear(dge.filt_na,lowess=TRUE, las = 1, cex.lab = 1.5, cex.axis = 1.2) 
-abline(h = 0, col = "blue", lwd = 2)
+```{r}
+saveRDS(se.filt, file.path("results", "se.filt.unnorm.rds"))
+saveRDS(dge.filt, file.path("results", "dge.filt.unnorm.rds"))
+```
 
-# TMM NORMALIZATION 
+## Normalization
 
-#First Plot 
-par(mfrow = c(1, 2))
-mask_remove_na <- !is.na(dge$samples$group)
-dge_na <- dge[,mask_remove_na ]
-plotSmear(dge_na, lowess = TRUE, las = 1, cex.lab = 1.5, cex.axis = 1.2) 
-abline(h = 0, col = "blue", lwd = 2)
+We calculate now the normalization factors on the filtered expression data set.
 
-#Second plot
-dge.filt_na_tmm <- calcNormFactors(dge.filt_na) 
-head(dge.filt_na_tmm$samples$norm.factors)
-head(dge.filt_na_tmm$samples$lib.size * dge.filt_na_tmm$samples$norm.factors)
-plotSmear(dge.filt_na_tmm, lowess = TRUE, las = 1, cex.lab = 1.5, cex.axis = 1.2) 
-abline(h = 0, col = "blue", lwd = 2)
+```{r}
+dge.filt <- calcNormFactors(dge.filt)
+```
 
+Replace the raw log2 CPM units in the corresponding assay element of the `SummarizedExperiment`
+object, by the normalized ones.
 
-# MA PLOTS
-summary(lclse.filt_na$gender)
-summary(lclse.filt_na$race)
-summary(lclse.filt_na$ethnicity)
+```{r}
+assays(se.filt)$logCPM <- cpm(dge.filt, log=TRUE, normalized.lib.sizes=TRUE, prior.count=0.25)
+```
 
-# MA plots - only explorative
-par(mfrow=c(1, 2), mar=c(4, 5, 3, 1)) 
-for(i in 1:2){
-  A <- rowMeans(assays(lclse.filt)$logCPM) ;
-  M <- assays(lclse.filt)$logCPM[, i] - A 
-  smoothScatter(A, M, main=colnames(lclse.filt)[i], las=1, cex.axis=1.2, cex.lab=1.5, cex.main=2) 
-  abline(h=0, col="blue", lwd=2) ;
-  lo <- lowess(M ~ A) ; 
+Store normalized versions of the filtered expression data.
+
+```{r}
+saveRDS(se.filt, file.path("results", "se.filt.rds"))
+saveRDS(dge.filt, file.path("results", "dge.filt.rds"))
+```
+
+## MA-plots
+
+We examine now the MA-plots of the normalized expression profiles. We look first to
+the tumor samples in Figure \@ref(fig:maPlotsTumor).
+
+<!---
+Here we make a MA-plot for each sample. The options 'fig.height' and 'fig.width'
+control the relative image size in *inches*. The final image size results from
+'height'x'dpi' and 'width'x'dpi', where 'dpi' is the image resolution in
+"dots per inch" (by default dpi=72). To scale the image to a desired size use
+'out.width' and 'out.height'. More information at http://yihui.name/knitr/options
+--->
+
+```{r maPlotsTumor, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples."}
+par(mfrow=c(22, 3), mar=c(4, 5, 3, 1))
+setmp <- se.filt[, se.filt$type == "tumor"]
+dgetmp <- dge.filt[, se.filt$type == "tumor"]
+for (i in 1:ncol(setmp)) {
+  A <- rowMeans(assays(setmp)$logCPM)
+  M <- assays(setmp)$logCPM[, i] - A
+  samplename <- substr(as.character(setmp$bcr_patient_barcode[i]), 1, 12)
+  smoothScatter(A, M, main=samplename, las=1)
+  abline(h=0, col="blue", lwd=2)
+  lo <- lowess(M ~ A)
   lines(lo$x, lo$y, col="red", lwd=2)
 }
+```
 
-# Normalization
+We do not observe samples with major expression-level dependent biases. Let's
+look now to the normal samples in Figure \@ref(fig:maPlotsNormal).
 
-# Order values by samples keeping track of the original order
-m <- assays(lclse.filt_na)$logCPM
-originalOrder <- apply(m, 2, order)
-m <- apply(m, 2, sort)
-nsamples<- ncol(m)
-ngenes<-nrow(m)
+```{r maPlotsNormal, fig.height=18, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the normal samples."}
+par(mfrow=c(9, 3), mar=c(4, 5, 3, 1))
+setmp <- se.filt[, se.filt$type == "normal"]
+dgetmp <- dge.filt[, se$type == "normal"]
+for (i in 1:ncol(setmp)) {
+  A <- rowMeans(assays(setmp)$logCPM)
+  M <- assays(setmp)$logCPM[, i] - A
+  samplename <- substr(as.character(setmp$bcr_patient_barcode[i]), 1, 12)
+  smoothScatter(A, M, main=samplename, las=1)
+  abline(h=0, col="blue", lwd=2)
+  lo <- lowess(M ~ A)
+  lines(lo$x, lo$y, col="red", lwd=2)
+}
+```
 
-# calculate aritmetic mean and assign it.
-m <- matrix(rep(floor(rowMeans(m)), nsamples), nrow = ngenes)
+We do not observe either important expression-level dependent biases among the normal samples.
 
-# re assign the original order
-m <- sapply(1:ncol(m),
-            function(x) m[order(originalOrder[, x]), x])
-apply(m, 2, sd)
+## Batch identification
 
+We will search now for potential surrogate of batch effect indicators. Given that each sample
+names corresponds to a TCGA barcode (see https://wiki.nci.nih.gov/display/TCGA/TCGA+barcode),
+following the strategy described in http://bioinformatics.mdanderson.org/main/TCGABatchEffects:Overview
+we are going to derive different elements of the TCGA barcode and examine their distribution
+across samples.
 
-# visualization 
-plotMDS(dge.filt_na_tmm, col = c("red", "blue")[as.integer(dge.filt$samples$group)], cex = 0.7) 
-legend("topleft", c("female", "male"), fill = c("red", "blue"), inset = 0.05, cex = 0.7)
-
-plotMDS(dge.filt_na_tmm, col = c("red", "orange", "blue")[as.integer(lclse$concentration)], cex = 0.7)
-legend("topleft", levels(lclse$concentration), fill = c("red", "orange", "blue"), inset = 0.05, cex = 0.7)
-# missing: eliminate outliers
-
-# ------------------------------------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------------------------------------
-
-
-# ------------------------------ BATCH EFFECT
-
-head(colData(lclse))
-lclse$bcr_patient_barcode
-
-# all samples were sequenced at teh same center
-center <- substr(colnames(dge.filt_na_tmm), 27, 28)
-table(center)
-
-#Tss 
-tss <- substr(colnames(dge.filt_na_tmm), 6, 7)
+```{r}
+tss <- substr(colnames(se.filt), 6, 7)
 table(tss)
-
-patient <- substr(colnames(dge.filt_na_tmm), 9, 12)
-table(patient)
-
-# Portion analyte
-portionanalyte <- substr(colnames(dge.filt_na_tmm), 18, 20)
-table(portionanalyte)
-
-#Plate
-plate <- substr(colnames(dge.filt_na_tmm), 22, 25)
+center <- substr(colnames(se.filt), 27, 28)
+table(center)
+plate <- substr(colnames(se.filt), 22, 25)
 table(plate)
-
-#Sample vial
-samplevial <- substr(colnames(dge.filt_na_tmm), 14, 16)
+portionanalyte <- substr(colnames(se.filt), 18, 20)
+table(portionanalyte)
+samplevial <- substr(colnames(se.filt), 14, 16)
 table(samplevial)
+```
 
-# Testing 
-table(data.frame(TYPE=lclse.filt_na$type, TSS=tss))
-table(data.frame(TYPE=lclse.filt_na$type, plate=plate))
-table(data.frame(TYPE=lclse.filt_na$type, vial = samplevial))
-table(data.frame(TYPE=lclse.filt_na$type, analyte = portionanalyte))
-# after having an overview of these, we decide to use 
+From this information we can make the following observations:
 
+  * All samples were sequenced at the same center
 
+  * All samples belong to one of two combinations of tissue type and vial, matching the
+    expected tumor and normal distribution.
+
+  * Samples were collected across different tissue source sites (TSS).
+
+  * All samples were sequenced within the same plate, except for the following one:
+
+```{r}
+colnames(se.filt)[plate == "2403"]
+```
+
+  * All samples were sequenced using one of two portion and analyte combinations except fo the
+    following one:
+
+```{r}
+colnames(se.filt)[portionanalyte == "21R"]
+```
+
+We are going to use the TSS as surrogate of batch effect indicator. Considering our outcome
+of interest as molecular changes between sample types, tumor vs. normal, we will examine now
+the cross-classification of this outcome with TSS.
+
+```{r}
+table(data.frame(TYPE=se.filt$type, TSS=tss))
+```
+
+Observe that normal tissues with `TSS=KM` or `TSS=KO` are under-represented with respect to
+the tumor tissues. If TSS is a source of expression variability, this under-representation
+of those two TSS in the normal samples may lead to a potential confounding effect.
+
+We examine now how samples group together by hierarchical clustering and multidimensional
+scaling, annotating the outcome of interest and the the surrogate of batch indicator. We
+calculate again log CPM values with a higher prior count to moderate extreme fold-changes
+produced by low counts. The resulting dendrogram is shown in Figure \@ref(fig:sampleClustering).
+
+```{r sampleClustering, fig.height=7, fig.width=14, dpi=100, echo=TRUE, fig.cap="Figure S6: Hierarchical clustering of the samples."}
 logCPM <- cpm(dge.filt, log=TRUE, prior.count=3)
 d <- as.dist(1-cor(logCPM, method="spearman"))
 sampleClustering <- hclust(d)
 batch <- as.integer(factor(tss))
 sampleDendrogram <- as.dendrogram(sampleClustering, hang=0.1)
-names(batch) <- colnames(lclse.filt_na)
-outcome <- paste(substr(colnames(lclse.filt_na), 9, 12), as.character(lclse.filt_na$type), sep="-")
-names(outcome) <- colnames(lclse.filt_na)
+names(batch) <- colnames(se.filt)
+outcome <- paste(substr(colnames(se.filt), 9, 12), as.character(se.filt$type), sep="-")
+names(outcome) <- colnames(se.filt)
 sampleDendrogram <- dendrapply(sampleDendrogram,
                                function(x, batch, labels) {
                                  if (is.leaf(x)) {
@@ -196,81 +339,28 @@ sampleDendrogram <- dendrapply(sampleDendrogram,
                                }, batch, outcome)
 plot(sampleDendrogram, main="Hierarchical clustering of samples")
 legend("topright", paste("Batch", sort(unique(batch)), levels(factor(tss))), fill=sort(unique(batch)))
+```
 
+We can observe that samples cluster primarily by sample type, tumor or normal. TSS seems to have
+a stronger effect among the normal samples, while it distributes better among the tumor samples.
+We may consider discarding samples leading to an unbalanced distribution of the outcome across batches.
 
-# --------------------------- Selecting the paired Samples for paired test analysis
+In Figure \@ref(fig:mdsPlot) we show the corresponding MDS plot. Here we see more clearly that the
+first source of variation separates tumor from normal samples. We can also observe that two tumor
+samples, corresponding to individuals `KL-8404` and `KN-8427` are separated from the rest, just as
+it happens in the hierchical clustering. A closer examination of their corresponding MA-plots also
+reveals a slight dependence of expression changes on average expression. We may consider discarding
+these two samples and doing the MDS plot again to have a closer look to the differences among the rest
+of the samples and their relationship with TSS.
 
-# Found the ones that are potentially paired  - same patient 
+```{r mdsPlot, fig.height=7, fig.width=14, dpi=100, echo=TRUE, fig.cap="Figure S7: Multidimensional scaling plot of the samples."}
+plotMDS(dge.filt, labels=outcome, col=batch)
+legend("bottomleft", paste("Batch", sort(unique(batch)), levels(factor(tss))),
+       fill=sort(unique(batch)), inset=0.05)
+```
 
-# Find the paired samples and returns a list with the patient IDs that have a paired sample
-find_paired_samples <- function(lclse){
-  found <- c()
-  paired <- c()
-  for(barcode in colnames(lclse)){
-    patient  <- substr(barcode, 9,12)
-    if(is.element(patient,found)){ paired <- c(paired,patient) }
-    else{ found <- c(found, patient) }
-  }
-  return(paired)
-}
+## Session information
 
-# Function that checks, given a vector of samples of the same patient, wether these 
-# are both from tumor and non tumor samples. If they are from both, it returns TRUE. 
-is_t_and_nt<- function(patient_samples){
-  t_found <- FALSE; nt_found<- FALSE
-  for (patient_sample in patient_samples){
-    t_id <- substr(patient_sample, 14, 15)
-    if(startsWith(t_id, "0")){  t_found<-TRUE }
-    else if (startsWith(t_id, "1")){ nt_found<-TRUE }
-  } 
-  if (t_found && nt_found){
-    return(TRUE)
-  }else{
-    return(FALSE)
-  }
-}
-
-# Filters out from the paired ones the ones that do not have both tumor and non tumor samples available
-filter_ones_with_t_and_nt <- function(paired, lclse){
-  filtered_paired <- c()
-  for (patientcode in paired){
-    patient_samples <- c()
-    for(barcode in colnames(lclse)){
-      patient  <- substr(barcode, 9,12)
-      if(patient == patientcode){
-        patient_samples <- c(patient_samples,barcode)
-      }
-    }
-    if (is_t_and_nt(patient_samples)){
-      filtered_paired <- c(filtered_paired,patient_samples)
-    }
-  }
-  return(filtered_paired)
-}
-
-
-
-# Get the paired, tumor and non tumor samples
-paired <- find_paired_samples(lclse)
-filter_ones_with_t_and_nt(paired, lclse)
-
-mask_paired <- is.element(colnames(lclse),filtered_paired)
-lclse.paired <- lclse[,mask_paired]
-dge.paired <- dge[,mask_paired]
-table(lclse.paired$type)
-
-lclse<- lclse.paired
-dge<-dge.paired
-
-# Having an overview 
-ord <- order(dge$sample$lib.size)
-barplot(dge$sample$lib.size[ord]/1e+06, las = 1, ylab = "Millions of reads", xlab = "Samples",
-        col = c("cyan", "orange")[lclse$gender[ord]], border=NA )
-legend("topleft", c("Female", "Male"), fill = c("cyan", "orange"), inset = 0.01)
-
-#CPM scaling - within sample normalization
-CPM <- t(t(dge$counts)/(dge$samples$lib.size/1e+06))
-assays(lclse)$logCPM <- cpm(dge, log = TRUE, prior.count = 0.25) 
-assays(lclse)$logCPM[1:3, 1:7]
-
-
+```{r, message=FALSE}
+sessionInfo()
+```
