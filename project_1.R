@@ -1,3 +1,4 @@
+
 ---
 output:
   BiocStyle::html_document
@@ -236,6 +237,7 @@ for (i in 1:ncol(setmp)) {
   smoothScatter(A, M, main=samplename, las=1)
   abline(h=0, col="blue", lwd=2)
   lo <- lowess(M ~ A)
+
   lines(lo$x, lo$y, col="red", lwd=2)
 }
 ```
@@ -268,6 +270,7 @@ following the strategy described in http://bioinformatics.mdanderson.org/main/TC
 we are going to derive different elements of the TCGA barcode and examine their distribution
 across samples.
 
+
 ```{r}
 tss <- substr(colnames(se.filt), 6, 7)
 table(tss)
@@ -280,6 +283,7 @@ table(portionanalyte)
 samplevial <- substr(colnames(se.filt), 14, 16)
 table(samplevial)
 ```
+
 
 From this information we can make the following observations:
 
@@ -310,6 +314,7 @@ the cross-classification of this outcome with TSS.
 ```{r}
 table(data.frame(TYPE=se.filt$type, TSS=tss))
 ```
+
 
 Observe that normal tissues with `TSS=KM` or `TSS=KO` are under-represented with respect to
 the tumor tissues. If TSS is a source of expression variability, this under-representation

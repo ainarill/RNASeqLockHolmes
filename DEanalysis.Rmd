@@ -10,11 +10,14 @@ objects that were loaded or produced in the previously processed file,
 and which are necessary in this file.
 --->
 
+
+
 ```{r setup, cache=FALSE, echo=FALSE, results='hide', message=FALSE}
 library(knitr)
 library(SummarizedExperiment)
 library(edgeR)
 library(geneplotter)
+
 
 opts_chunk$set(cache=TRUE,
                cache.path="cache/file2",
@@ -23,11 +26,11 @@ opts_chunk$set(cache=TRUE,
                fig.align="center",
                comment="")
 
-se <- readRDS(file.path("rawCounts", "seKICH.rds"))
+coadse <- readRDS(file.path("rawCounts", "coadseKICH.rds"))
 dge <- readRDS(file.path("results", "dge.rds"))
-se.filt.unnorm <- readRDS(file.path("results", "se.filt.unnorm.rds"))
+coadse.filt.unnorm <- readRDS(file.path("results", "coadse.filt.unnorm.rds"))
 dge.filt.unnorm <- readRDS(file.path("results", "dge.filt.unnorm.rds"))
-se.filt <- readRDS(file.path("results", "se.filt.rds"))
+coadse.filt <- readRDS(file.path("results", "coadse.filt.rds"))
 dge.filt <- readRDS(file.path("results", "dge.filt.rds"))
 
 
@@ -35,14 +38,14 @@ dge.filt <- readRDS(file.path("results", "dge.filt.rds"))
 
 # Differential expression
 
-We perform a simple examination of expression changes and their associated p-values
-using the R/Bioconductor package [sva](http://bioconductor.org/packages/sva).
+
+The following step is to perform a simple examination of expression changes and their associated p-values using the R/Bioconductor package [sva](http://bioconductor.org/packages/sva) as follows:
 
 ```{r, message=FALSE}
 library(sva)
-mod <- model.matrix(~ se.filt$type, colData(se.filt))
-mod0 <- model.matrix(~ 1, colData(se.filt))
-pv <- f.pvalue(assays(se.filt)$logCPM, mod, mod0)
+mod <- model.matrix(~ coadse.filt$type + tss, colData(coadse.filt))
+mod0 <- model.matrix(~tss, colData(coadse.filt))
+pv <- f.pvalue(assays(coadse.filt)$logCPM, mod, mod0)
 sum(p.adjust(pv, method="fdr") < 0.01)
 ```
 
@@ -54,21 +57,23 @@ resulting p-values.
 hist(pv, main="", las=1)
 ```
 
-Now, let's estimate surrogate variables using the `sva()` function.
+
+Then we are going to estimate surrogate variables using the `sva()` function.
 
 ```{r}
-sv <- sva(assays(se.filt)$logCPM, mod, mod0)
+sv <- sva(assays(coadse.filt)$logCPM, mod, mod0)
 sv$n
 ```
 
-The SVA algorithm has found `r sv$n` surrogate variables. Let's use them to
+The SVA algorithm has found `r sv$n` surrogate variables. So, we are going to use them to
+
 assess againt the extent of differential expression this time adjusting for these
 surrogate variables.
 
 ```{r}
 modsv <- cbind(mod, sv$sv)
 mod0sv <- cbind(mod0, sv$sv)
-pvsv <- f.pvalue(assays(se.filt)$logCPM, modsv, mod0sv)
+pvsv <- f.pvalue(assays(coadse.filt)$logCPM, modsv, mod0sv)
 sum(p.adjust(pvsv, method="fdr") < 0.01)
 ```
 

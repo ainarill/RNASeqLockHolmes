@@ -1,15 +1,15 @@
 # ---------------- PACKAGES 
 suppressPackageStartupMessages({
-    library(edgeR)
-    library(SummarizedExperiment)
-    library(geneplotter)
-    library(BiocStyle)
-  }
+  library(edgeR)
+  library(SummarizedExperiment)
+  library(geneplotter)
+  library(BiocStyle)
+}
 )
 # ------------------------------------------------------------------------------------------------------------
 
 # GET THE DATA 
-data <- readRDS("/Users/luisasantus/Downloads/seCOAD.rds")
+data <- readRDS("seCOAD.rds")
 coadse<-data
 dge <- DGEList(counts = assays(coadse)$counts, genes = as.data.frame(rowData(coadse)))
 
@@ -24,8 +24,8 @@ paired_mask <- substr(colnames(coadse),9,12) %in% rownames(df_paired)
 coadse.paired<- coadse[,paired_mask]
 dge.paired <- dge[,paired_mask]
 table(coadse.paired$type)
-
-
+normal  tumor 
+41     46
 
 # ------------------------------------------------------------------------------------------------------------
 # Analyze the sequencing depth
@@ -81,7 +81,7 @@ multidensity(as.list(as.data.frame(assays(coadse.paired)$logCPM)), xlab = "log2 
 # plot divided by tumor and control for a better overview
 par(mfrow = c(1, 2), mar = c(4, 5, 1, 1))
 multidensity(as.list(as.data.frame(assays(coadse_tumor)$logCPM)), xlab = "log2 CPM", legend = NULL,
-           main = "Tumor samples", cex.axis = 1.2, cex.lab = 1.5, las = 1)
+             main = "Tumor samples", cex.axis = 1.2, cex.lab = 1.5, las = 1)
 multidensity(as.list(as.data.frame(assays(coadse_control)$logCPM)), xlab = "log2 CPM", legend = NULL,
              main = "Control samples", cex.axis = 1.2, cex.lab = 1.5, las = 1)
 
@@ -120,6 +120,8 @@ saveRDS(dge.filt, file.path(".", "dge.filt.unnorm.rds"))
 ####### Exploration of gender 
 dge.filt$samples$group <- coadse.filt$gender
 table(dge.filt$samples$group)
+FEMALE   MALE 
+36     36 
 dge.filt$samples$group <- coadse.filt$gender
 # REMOVING NAS
 mask <- !is.na(dge.filt$samples$group)
@@ -188,6 +190,20 @@ legend("topleft", levels(coadse.filt$race), fill = c("red", "orange", "blue"), i
 
 # ------------------------------ BATCH EFFECT
 
+tss <- substr(colnames(dge.filt), 6, 7)
+table(tss)
+center <- substr(colnames(dge.filt), 27, 28)
+table(center)
+plate <- substr(colnames(se.filt), 22, 25)
+table(plate)
+portionanalyte <- substr(colnames(se.filt), 18, 20)
+table(portionanalyte)
+samplevial <- substr(colnames(se.filt), 14, 16)
+table(samplevial)
+
+
+
+
 head(colData(coadse))
 coadse$bcr_patient_barcode
 
@@ -247,4 +263,5 @@ resetPar <- function() {
   dev.off()
   op
 }
+
 
