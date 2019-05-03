@@ -253,11 +253,10 @@ We do not observe either important expression-level dependent biases among the n
 
 ## Batch identification
 
-We will search now for potential surrogate of batch effect indicators. Given that each sample
-names corresponds to a TCGA barcode (see https://wiki.nci.nih.gov/display/TCGA/TCGA+barcode),
-following the strategy described in http://bioinformatics.mdanderson.org/main/TCGABatchEffects:Overview
-we are going to derive different elements of the TCGA barcode and examine their distribution
-across samples.
+The next step will be the search for potential surrogate of batch effect indicators. Batch effect include sub-groups of measurements that have qualitatively different behaviour across conditions and are unrelated to the biological variables in the study.
+As normalization of the data can not always remove completely the batch effect, we are going to identify this effect, adjust it and eventually correct it.
+
+Given that each sample names corresponds to a TCGA barcode (see https://wiki.nci.nih.gov/display/TCGA/TCGA+barcode), following the strategy described in http://bioinformatics.mdanderson.org/main/TCGABatchEffects:Overview we are going to derive different elements of the TCGA barcode and examine their distribution across samples.
 
 ```{r}
 tss <- substr(colnames(se.filt), 6, 7)
