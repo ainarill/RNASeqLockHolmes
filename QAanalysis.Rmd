@@ -285,34 +285,28 @@ table(samplevial)
 
 From this information we can make the following observations:
 
-  * All samples were sequenced at the same center
+  * *TSS*: Samples were collected across 4 different tissue source sites (TSS), with poor representation of one of them       (F4).
+  
+  * *Sample Vial*: 44 samples belong to solid tumor samples(**01 code**) whereas 39 do not (**11 code**). The 44           solid tumor samples where distributed in 3 different vials (A, B, C) whereas the 39 non tumor samples where put in      the same vial (A). 
+  
+  * *Portions & Analyte*: samples where distributed in different portions and analytes combinations. 
+  
+  * *Plates*: Samples were sequenced in different plates.
 
-  * All samples belong to one of two combinations of tissue type and vial, matching the
-    expected tumor and normal distribution.
-
-  * Samples were collected across different tissue source sites (TSS).
-
-  * All samples were sequenced within the same plate, except for the following one:
-
-```{r}
-colnames(se.filt)[plate == "2403"]
-```
-
-  * All samples were sequenced using one of two portion and analyte combinations except fo the
-    following one:
-
-```{r}
-colnames(se.filt)[portionanalyte == "21R"]
-```
-
+  * The analyte code of all samples is a `R` (RNA samples), as expected.
+  
+  * All samples were sequenced at the same center.
+  
+  
 We are going to use the TSS as surrogate of batch effect indicator. Considering our outcome
 of interest as molecular changes between sample types, tumor vs. normal, we will examine now
 the cross-classification of this outcome with TSS.
 
 ```{r}
-table(data.frame(TYPE=se.filt$type, TSS=tss))
+table(data.frame(TYPE=coadse.filt$type, TSS=tss))
 ```
 
+We can observe that 
 Observe that normal tissues with `TSS=KM` or `TSS=KO` are under-represented with respect to
 the tumor tissues. If TSS is a source of expression variability, this under-representation
 of those two TSS in the normal samples may lead to a potential confounding effect.
