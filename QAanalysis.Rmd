@@ -44,20 +44,18 @@ into the output of the report.
 
 ```{r, message=FALSE}
 library(SummarizedExperiment)
-
-lclse <- readRDS(file.path("rawCounts", "seCOAD.rds"))
-lclse
-
+coadse <- readRDS(file.path("rawCounts", "seCOAD.rds"))
+coadse
 ```
 
-Explore the column (phenotypic) data, which in this case corresponds to clinical
-variables, and their corresponding metadata.
+In this RNA-seq data we have a total of 524 samples (483 tumor samples and 41 non-tumor samples). In order to know more about the data, we explore the `colData` column, that corresponds to clinical variables, and their corresponding metadata.
 
 ```{r}
-dim(colData(se))
-colData(se)[1:5, 1:5]
-mcols(colData(se), use.names=TRUE)
+dim(colData(coadse))
+colData(coadse)[1:5, 1:5]
+mcols(colData(coadse), use.names=TRUE)
 ```
+
 
 These metadata consists of two columns of information about the clinical variables.
 One called `labelDescription` contains a succint description of the variable, often
