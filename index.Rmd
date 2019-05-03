@@ -1,0 +1,51 @@
+---
+title: "Analysis of a TCGA RNA-seq data set on Colon Adenocarcinoma"
+author:
+- name: Luisa Santus
+  affiliation:
+  - &id Master Programme on Bioinformatics for Health Sciences, Universitat Pompeu Fabra,   Barcelona, Spain
+  email: luisa.santus01@estudiant.upf.edu
+- name: Aina Rill
+  affiliation: *id
+  email: aina.rill01@estudiant.upf.edu
+- name: Altaïr C. Hernández
+  affiliation: *id
+  email: altair.chinchilla01@estudiant.upf.edu
+date: "`r format(Sys.time(), '%B %e, %Y')`"
+output: 
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+bibliography: bibliography.bib
+---
+
+# Introduction
+
+Colorectal Cancer (CRC) is the second most common cancer in women (614,000 cases per year) 
+and the third most common in men(746,000 cases per year). Currently it is the most common 
+malignant cancer in the gatrointestinal tract, representing 13\% of all malignant tumors, 
+and it is considered the main cause of death in gastrointestinal cancer(Siegel RL, et al. 2015).
+It can be arised from one or a combination of three differen mechanisms, namely chromosmomal 
+inestability (CIN), CpG islands methylator phenotype (CIMP), and microsatellite inestability (MSI). 
+Understanding the specific mechanisms of tumorigenesis and the underlaying genetic and epigenetic
+traits is crutial in the disease phenotype comprehension. [The Cancer Genome Atlas](https://www.cancer.gov/about-nci/organization/ccg/research/structural-genomics/tcga) (TCGA) has comprehensively profiled this type of cancer in a patient cohort. Here we analyze the expression profiles of those
+patients, accessible in the form of a raw RNA-seq counts produced by
+@rahman2015alternative using a pipeline based on the R/Bioconductor
+software package `r Biocpkg("Rsubread")`.
+
+
+
+```{r echo=FALSE, results='asis'}
+cat(readLines("QAanalysis.knit.md"), sep="\n")
+```
+
+```{r echo=FALSE, results='asis'}
+cat(readLines("DEanalysis.knit.md"), sep="\n")
+```
+
+```{r echo=FALSE, results='asis'}
+cat(readLines("FEanalysis.knit.md"), sep="\n")
+```
+
+# References
