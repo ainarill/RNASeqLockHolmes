@@ -13,18 +13,18 @@
 
 ## Data Structure
 
-RNASeqLockHolmes/
-      README.md
-      bibliography.bib
-      index.Rmd
-      QAanalysis.Rmd
-      Makefile
-      QAanalysis_files/
-      DEanalysis_files/
-      rawCounts/
-          seCOAD.rds
-      REFS/
-      results/
+      RNASeqLockHolmes/
+            README.md
+            bibliography.bib
+            index.Rmd
+            QAanalysis.Rmd
+            Makefile
+            QAanalysis_files/
+            DEanalysis_files/
+            rawCounts/
+                seCOAD.rds
+            REFS/
+            results/
 
 
 * README.md
