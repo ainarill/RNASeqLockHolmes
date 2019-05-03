@@ -48,17 +48,21 @@ coadse <- readRDS(file.path("rawCounts", "seCOAD.rds"))
 coadse
 ```
 
-In this RNA-seq data we have a total of 524 samples (483 tumor samples and 41 non-tumor samples). 
+In this TCGA RNA-seq data we have a total of 524 samples (483 tumor samples and 41 non-tumor samples). 
 In order to know more about the data, we explore the `colData` column, that corresponds to clinical
 variables, and their corresponding metadata.
 
 ```{r}
 dim(colData(coadse))
+```
+We have a total of 524 samples that have 549 clinical variables/factors that could be analysed. However,
+we are not going to explore all these variables, but those that can have more relenace in the data of study.
+```{r}
 colData(coadse)[1:5, 1:5]
+```
+```{r}
 mcols(colData(coadse), use.names=TRUE)
 ```
-
-
 These metadata consists of two columns of information about the clinical variables.
 One called `labelDescription` contains a succint description of the variable, often
 not more self-explanatory than the variable name itself, and the other called
@@ -67,159 +71,216 @@ identifier can be use in https://cdebrowser.nci.nih.gov to search for further
 information about the associated clinical variable using the `Advanced search`
 form and the `Public ID` attribute search.
 
-Now, explore the row (feature) data.
+Now, explore the row (feature) data. 
 
 ```{r}
-rowData(se)
-rowRanges(se)
+rowData(coadse)
 ```
+```{r}
+rowRanges(coadse)
+```
+By using the `rowData` and `rowRanges` functions we can see information about the
+features of interest. In this case each row represents a gene transcript and we 
+can see information about the length, the GC content, the chromosome where it is 
+located, the strand (forward or reverse), etc. 
 
 To perform quality assessment and normalization we need first to load the
-[edgeR](http://bioconductor.org/packages/edgeR) R/Bioconductor package and
-create a `DGEList' object.
+[edgeR](http://bioconductor.org/packages/edgeR) R/Bioconductor package, 
+create a `DGEList` object and store it in the `results` folder.
 
 ```{r, message=FALSE}
 library(edgeR)
-
-dge <- DGEList(counts=assays(se)$counts, genes=mcols(se))
+dge <- DGEList(counts=assays(coadse)$counts, genes=mcols(coadse))
 saveRDS(dge, file.path("results", "dge.rds"))
 ```
 
 Now calculate $\log_2$ CPM values of expression and put them as an additional
-assay element to ease their manipulation.
+assay element to ease their manipulation. 
 
 ```{r}
-assays(se)$logCPM <- cpm(dge, log=TRUE, prior.count=0.5)
-assays(se)$logCPM[1:5, 1:5]
+assays(coadse)$logCPM <- cpm(dge, log=TRUE, prior.count=0.5)
+assays(coadse)$logCPM[1:5, 1:5]
 ```
+As we can see, for each sample there are different CPM (Counts Per Million) values
+of expression. Negative ones correspond to very low expressed samples. 
 
 ## Sequencing depth
 
-Let's examine the sequencing depth in terms of total number of sequence read counts
-mapped to the genome per sample. Figure \@ref(fig:libsizes) below shows the
-sequencing depth per sample, also known as library sizes, in increasing order.
-
-<!---
-you can control the height and width in pixels of the figure with 'out.height' and
-'out.width'. Figures are automatically numbered, to refer to them in the main test
-you should use the notation shown above as \@ref(fig:xxxx) with xxxx being the label
-in the code chunk that also gives the filename of the figure. This name must be unique
---->
+Before proceeding with any normalization or analysis step, we want to collect an overview of
+the data that we are working with. Here we examine the sequencing depth by plotting the total number of
+reads mapped to the genome per sample.
 
 ```{r libsizes, echo=FALSE, out.width="600px", fig.cap="Library sizes in increasing order."}
-ord <- order(dge$sample$lib.size/1e6)
-barplot(dge$sample$lib.size[ord]/1e6, las=1, ylab="Millions of reads",
-                xlab="Samples", col=c("blue", "red")[(se$type[ord] == "tumor") + 1])
-legend("topleft", c("tumor", "normal"), fill=c("red", "blue"), inset=0.01)
+sampledepth <- round(dge.paired$sample$lib.size / 1e6, digits=1)
+names(sampledepth) <- substr(colnames(coadse.paired), 6, 12)
+sort(sampledepth)
+par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
+ord <- order(dge.paired$sample$lib.size)
+barplot(dge.paired$sample$lib.size[ord]/1e+06, las = 1, ylab = "Millions of reads", xlab = "Samples",
+        col = c("cyan", "orange")[coadse.paired$type] )
+legend("topleft", c("Normal", "Tumor"), fill = c("cyan", "orange"), inset = 0.01)
 ```
-This figure reveals substantial differences in sequencing depth between samples
-and we may consider discarding those samples whose depth is substantially lower
-than the rest. To identify who are these samples we may simply look at the
-actual numbers including portion of the sample identifier that distinguishes them.
-
+In the plot we observe two main aspects that are worth paying attention to.
+First, we observe that surprisingly all the tumor samples present a lower sequencing depth than the
+normal samples. Even though we could not find any reliable explaination for this behaviour so far in our
+research, we considered this event dispensable at this time as the sequencing depth will be taken into 
+consideration during the normalization steps.
+One other important aspect is that we observe that some sample present considerable differences in the sequencing depth
+and specifically we can distinguish a couple of samples on the left of the graph that present 
+considerably low sequencing depths: this may generate problems in further analysis of the data. 
+For this reason we identify these samples by looking at the at the sample depth as shown below. 
 ```{r}
-sampledepth <- round(dge$sample$lib.size / 1e6, digits=1)
-names(sampledepth) <- substr(colnames(se), 6, 12)
+sampledepth <- round(dge.paired$sample$lib.size / 1e6, digits=1)
+names(sampledepth) <- substr(colnames(coadse.paired), 6, 12)
 sort(sampledepth)
 ```
+Because the samples A6.2679 and A6.2682 present extremely low sequencing depths we decide to remove them from our dataset.
+Since we decided to proceed with a paired analysis, when removing one sample we remove its paired one too.
+
+```{r}
+# Remove the two samples with very low sequencing depth
+mask_remove_low_coverage <- substr(colnames(coadse.paired),9,12) %in% c("2679", "2682")
+coadse.paired <- coadse.paired[,!mask_remove_low_coverage]
+dge.paired <- dge.paired[,!mask_remove_low_coverage]
+dim(coadse.paired)
+```
+
+Here we can observe again the same plot as before after having removed the said samples.
+
+```{r}
+# coverage_filtered plot
+names(sampledepth) <- substr(colnames(coadse.paired), 6, 12)
+sort(sampledepth)
+par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
+ord <- order(dge.paired$sample$lib.size)
+barplot(dge.paired$sample$lib.size[ord]/1e+06, las = 1, ylab = "Millions of reads", xlab = "Samples",
+        col = c("cyan", "orange")[coadse.paired$type] )
+legend("topleft", c("Normal", "Tumor"), fill = c("cyan", "orange"), inset = 0.01)
+```
+
+## Gender among samples
+In order to collect an even broader understanding of the dataset we then furher explore the sequencing 
+depth highlighting female and male samples.
+
+```{r}
+ord <- order(dge.paired$sample$lib.size)
+barplot(dge.paired$sample$lib.size[ord]/1e+06, las = 1, ylab = "Millions of reads", xlab = "Samples",
+        col = c("cyan", "orange")[coadse.paired$gender[ord]] )
+legend("topleft", c("Female", "Male"), fill = c("cyan", "orange"), inset = 0.01)
+```
+In the figure we can see that not only we have a similar number of female and male samples, but that 
+their sequencing depth is quite well equilibrated as we cannot clearly identify any defined clustering event.
 
 ## Distribution of expression levels among samples
 
-Let's look at the distribution of expression values per sample in terms of
-logarithmic CPM units. Due to the large number of samples, we display tumor
-and normal samples separately, and are shown in Figure \@ref(fig:distRawExp)
-
-<!---
-the option echo=FALSE hides the R code. When plotting in general one does not
-want to see the code. Options fig.height and fig.width control height and width
-of the plot in inches while out.height and out.width do it in the final output
-file; see http://yihui.name/knitr/options for full details.
---->
-
-```{r distRawExp, echo=FALSE, fig.height=4, fig.width=10, out.width="800px", fig.cap="Non-parametric density distribution of expression profiles per sample.", message=FALSE}
-library(geneplotter)
-par(mfrow=c(1, 2))
-multidensity(as.list(as.data.frame(assays(se[, se$type == "tumor"])$logCPM)),
-                          xlab="log 2 CPM", legend=NULL, main="Tumor samples", las=1)
-multidensity(as.list(as.data.frame(assays(se[, se$type == "normal"])$logCPM)),
-                          xlab="log 2 CPM", legend=NULL, main="Normal samples", las=1)
+We first run a within sample normalization. 
+```{r}
+CPM <- t(t(dge.paired$counts)/(dge.paired$samples$lib.size/1e+06))
+assays(coadse.paired)$logCPM <- cpm(dge.paired, log = TRUE, prior.count = 0.25) 
 ```
 
-We do not appreciate substantial differences between the samples in the
-distribution of expression values.
+We are then interested in exploring the distribution of the expression levels through
+all the samples in terms of logarithmic CPM units.
+```{r disrRawExpAll, echo=FALSE, fig.height=4, fig.width=10, out.width="800px", fig.cap="Non-parametric density distribution of expression profiles per sample.", message=FALSE}
+par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
+multidensity(as.list(as.data.frame(assays(coadse.paired)$logCPM)), xlab = "log2 CPM", legend = NULL,
+             main = "All samples", cex.axis = 1.2, cex.lab = 1.5, las = 1)
+```
+In order to provide a clearer visualization, we decided to devide the dataset into two smaller subsets, specifically 
+tumor samples and normal sample. Figure \@ref(fig:distRawExpComp) shows the expression levels in terms of logCPM for tumors
+and control samples separately.
+```{r disrRawExpComp, echo=FALSE, fig.height=4, fig.width=10, out.width="800px", fig.cap="Non-parametric density distribution of expression profiles per sample.", message=FALSE}
+tumor_mask <- coadse.paired$type == "tumor"
+non_tumor_mask <- coadse.paired$type == "normal"
+coadse_tumor <- coadse.paired[,tumor_mask]
+coadse_control <- coadse.paired[,non_tumor_mask]
+# plot divided by tumor and control for a better overview
+par(mfrow = c(1, 2), mar = c(4, 5, 1, 1))
+multidensity(as.list(as.data.frame(assays(coadse_tumor)$logCPM)), xlab = "log2 CPM", legend = NULL,
+           main = "Tumor samples", cex.axis = 1.2, cex.lab = 1.5, las = 1)
+multidensity(as.list(as.data.frame(assays(coadse_control)$logCPM)), xlab = "log2 CPM", legend = NULL,
+             main = "Control samples", cex.axis = 1.2, cex.lab = 1.5, las = 1)
+```
+
+As we do not observe extreme differences in the distribution of the expression values we decide to not exclude any sample
+from the dataset in this step and to proceed with furthe analyses with the current dataset.
+
 
 ## Distribution of expression levels among genes
 
-Let's calculate now the average expression per gene through all the samples.
-Figure \@ref(fig:exprdist) shows the distribution of those values across genes.
+We are now interested in investigating if there is any gene which has very low expression
+values so that we can possibly want to exclude them from the dataset.
+In order to do so, we calculate the average expression of each gene for all the samples and plot
+their distribution in Figure \@ref(fig:exprdist).
 
 ```{r exprdist, echo=FALSE, out.width="400px", fig.cap="Distribution of average expression level per gene."}
-avgexp <- rowMeans(assays(se)$logCPM)
-hist(avgexp, xlab="log2 CPM", main="", las=1)
-abline(v=1, col="red", lwd=2)
+avgexp <- rowMeans(assays(coadse.paired)$logCPM)
+par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
+hist(avgexp, xlab = expression(log[2] * "CPM"), main = "", las = 1, col = "gray")
+abline(v = 0, col = "red", lwd = 2)
 ```
 
 ## Filtering of lowly-expressed genes
 
-In the light of this plot, we may consider a cutoff of 1 log CPM unit as minimum value
-of expression to select genes being expressed across samples. Using this cutoff we proceed
-to filter out lowly-expressed genes.
+From this distribution of  \@ref(fig:exprdist) we could already visually identify a cutoff to define the too lowly expressed genes.
+Nontheless, we opted for a more precise approach to calculate the cutoff.
 
 ```{r}
-mask <- avgexp > 1
-dim(se)
-se.filt <- se[mask, ]
-dim(se.filt)
-dge.filt <- dge[mask, ]
-dim(dge.filt)
+cpmcutoff <- round(10/min(dge.paired$sample$lib.size/1e+06), digits = 1)
+sprintf("Cutoff: %s", cpmcutoff)
+nsamplescutoff <- min(table(coadse.paired$gender))
+mask <- rowSums(cpm(dge.paired) > cpmcutoff) >= nsamplescutoff
+coadse.filt <- coadse.paired[mask, ]
+dge.filt <- dge.paired[mask, ]
+dim(coadse.filt)
 ```
 
-Store un-normalized versions of the filtered expression data.
+Once we have identified the cutoff, we filter out the genes that are below the said cutoff.
+We can visually observe which genes have been left out from the datatset in Figure \@ref(fig:filter)
+```{r filter}
+par(mar = c(4, 5, 1, 1))
+h <- hist(avgexp, xlab = expression("Expression level (" * log[2] * "CPM)"), main = "",
+          las = 1, col = "grey", cex.axis = 1.2, cex.lab = 1.5)
+x <- cut(rowMeans(assays(coadse.filt)$logCPM), breaks = h$breaks)
+lines(h$mids, table(x), type = "h", lwd = 10, lend = 1, col = "darkred")
+legend("topright", c("All genes", "Filtered genes"), fill = c("grey", "darkred"))
+```
 
+Before proceeding with the normalization steps, we prefer to save a copy of the unnormalized data 
+in case we later need to work on it again.
 ```{r}
 saveRDS(se.filt, file.path("results", "se.filt.unnorm.rds"))
 saveRDS(dge.filt, file.path("results", "dge.filt.unnorm.rds"))
 ```
-
 ## Normalization
 
-We calculate now the normalization factors on the filtered expression data set.
+Since different samples may have different RNA compositions and this could be problematic for further analyses
+we need to take it into account and normalize the data.
+We estimate a normalization factor for each library using the Trimmed Mean of M-Values and apply it
+to our data.
 
 ```{r}
-dge.filt <- calcNormFactors(dge.filt)
+dge.filt <- calcNormFactors(dge.filt) 
+assays(coadse.filt)$logCPM <- cpm(dge.filt, log=TRUE, normalized.lib.sizes=TRUE, prior.count=0.25)
 ```
 
-Replace the raw log2 CPM units in the corresponding assay element of the `SummarizedExperiment`
-object, by the normalized ones.
+Again, we like to keep on with the good practice of storing intermediate generated files.  
 
 ```{r}
-assays(se.filt)$logCPM <- cpm(dge.filt, log=TRUE, normalized.lib.sizes=TRUE, prior.count=0.25)
-```
-
-Store normalized versions of the filtered expression data.
-
-```{r}
-saveRDS(se.filt, file.path("results", "se.filt.rds"))
+saveRDS(se.filt, file.path("results", "coadse.filt.rds"))
 saveRDS(dge.filt, file.path("results", "dge.filt.rds"))
 ```
 
 ## MA-plots
 
-We examine now the MA-plots of the normalized expression profiles. We look first to
-the tumor samples in Figure \@ref(fig:maPlotsTumor).
-
-<!---
-Here we make a MA-plot for each sample. The options 'fig.height' and 'fig.width'
-control the relative image size in *inches*. The final image size results from
-'height'x'dpi' and 'width'x'dpi', where 'dpi' is the image resolution in
-"dots per inch" (by default dpi=72). To scale the image to a desired size use
-'out.width' and 'out.height'. More information at http://yihui.name/knitr/options
---->
-
+We now want to visualize the expression profiles of the normalized data. 
+As we did previously, we opted for a subdivision of the dataset in the tumor and
+normal subsets.
+In Figure \@ref(fig:maPlotsTumor) we observe the MA-plots for the Tumor samples subset.
 ```{r maPlotsTumor, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples."}
-par(mfrow=c(22, 3), mar=c(4, 5, 3, 1))
-setmp <- se.filt[, se.filt$type == "tumor"]
-dgetmp <- dge.filt[, se.filt$type == "tumor"]
+par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
+setmp <- coadse.filt[, coadse.filt$type == "tumor"]
+dgetmp <- dge.filt[, coadse.filt$type == "tumor"]
 for (i in 1:ncol(setmp)) {
   A <- rowMeans(assays(setmp)$logCPM)
   M <- assays(setmp)$logCPM[, i] - A
@@ -231,13 +292,12 @@ for (i in 1:ncol(setmp)) {
 }
 ```
 
-We do not observe samples with major expression-level dependent biases. Let's
-look now to the normal samples in Figure \@ref(fig:maPlotsNormal).
+In Figure \@ref(fig:maPlotsNormal) we observe the MA-plots for the Control samples subset.
 
-```{r maPlotsNormal, fig.height=18, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the normal samples."}
-par(mfrow=c(9, 3), mar=c(4, 5, 3, 1))
-setmp <- se.filt[, se.filt$type == "normal"]
-dgetmp <- dge.filt[, se$type == "normal"]
+```{r maPlotsNormal, fig.height=32, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the control samples."}
+par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
+setmp <- coadse.filt[, coadse.filt$type == "normal"]
+dgetmp <- dge.filt[, coadse.filt$type == "normal"]
 for (i in 1:ncol(setmp)) {
   A <- rowMeans(assays(setmp)$logCPM)
   M <- assays(setmp)$logCPM[, i] - A
@@ -249,7 +309,8 @@ for (i in 1:ncol(setmp)) {
 }
 ```
 
-We do not observe either important expression-level dependent biases among the normal samples.
+As we do not see any important expression levels biases in any of the tumor and normal samples we decide to proceed to the 
+next step of the analysis without modifying the dataset we work with.
 
 ## Batch identification
 
@@ -274,26 +335,28 @@ table(plate)
 
 From this information we can make the following observations:
 
-  * Samples were collected across 4 different tissue source sites (TSS), with poor representation of one of them (F4).
+  * *TSS*: Samples were collected across 4 different tissue source sites (TSS), with poor representation of one of them       (F4).
+  
+  * *Sample Vial*: 44 samples belong to solid tumor samples(**01 code**) whereas 39 do not (**11 code**). The 44           solid tumor samples where distributed in 3 different vials (A, B, C) whereas the 39 non tumor samples where put in      the same vial (A). 
+  
+  * *Portions & Analyte*: samples where distributed in different portions and analytes combinations. 
+  
+  * *Plates*: Samples were sequenced in different plates.
+
+  * The analyte code of all samples is a `R` (RNA samples), as expected.
   
   * All samples were sequenced at the same center.
   
-  * Samples were sequenced in different plates.
-
-  * 44 samples belong to solid tumor samples whereas 39 do not. 3 of the 44 solid tumor samples belong to different vials (B and C), the 41 left plus de 39 that are not solid tumors coincide in vial (A).
   
-  * The analyte of all samples is a RNA sample, as we expected.
-
-We are going to use the 'sample vial' as surrogate of batch effect indicator. Considering our outcome of interest as molecular changes between sample types, tumor vs. normal, we will examine now the cross-classification of this outcome with sample-vial information.
+We are going to use the TSS as surrogate of batch effect indicator. Considering our outcome
+of interest as molecular changes between sample types, tumor vs. normal, we will examine now
+the cross-classification of this outcome with TSS.
 
 ```{r}
 table(data.frame(TYPE=coadse.filt$type, TSS=tss))
-table(data.frame(TYPE=coadse.filt$type, samplevial=samplevial))
-table(data.frame(TYPE=coadse.filt$type, portionanalyte=portionanalyte))
-table(data.frame(TYPE=coadse.filt$type, plate=plate))
-
 ```
 
+We can observe that 
 Observe that normal tissues with `TSS=KM` or `TSS=KO` are under-represented with respect to
 the tumor tissues. If TSS is a source of expression variability, this under-representation
 of those two TSS in the normal samples may lead to a potential confounding effect.

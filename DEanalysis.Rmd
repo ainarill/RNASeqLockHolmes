@@ -9,9 +9,9 @@ to speed up processing it, here in the setup block we load libraries and
 objects that were loaded or produced in the previously processed file,
 and which are necessary in this file.
 --->
-##################
-TODO!!!!!!!!!!!!!! ESTO SE TIENE QUE HACER!!
-###################
+
+
+
 ```{r setup, cache=FALSE, echo=FALSE, results='hide', message=FALSE}
 library(knitr)
 library(SummarizedExperiment)
@@ -19,9 +19,25 @@ library(edgeR)
 library(geneplotter)
 
 
+opts_chunk$set(cache=TRUE,
+               cache.path="cache/file2",
+               cache.extra=R.version.string,
+               autodep=TRUE,
+               fig.align="center",
+               comment="")
+
+coadse <- readRDS(file.path("rawCounts", "coadseKICH.rds"))
+dge <- readRDS(file.path("results", "dge.rds"))
+coadse.filt.unnorm <- readRDS(file.path("results", "coadse.filt.unnorm.rds"))
+dge.filt.unnorm <- readRDS(file.path("results", "dge.filt.unnorm.rds"))
+coadse.filt <- readRDS(file.path("results", "coadse.filt.rds"))
+dge.filt <- readRDS(file.path("results", "dge.filt.rds"))
+
+
 ```
 
 # Differential expression
+
 
 The following step is to perform a simple examination of expression changes and their associated p-values using the R/Bioconductor package [sva](http://bioconductor.org/packages/sva) as follows:
 
@@ -41,6 +57,7 @@ resulting p-values.
 hist(pv, main="", las=1)
 ```
 
+
 Then we are going to estimate surrogate variables using the `sva()` function.
 
 ```{r}
@@ -49,6 +66,7 @@ sv$n
 ```
 
 The SVA algorithm has found `r sv$n` surrogate variables. So, we are going to use them to
+
 assess againt the extent of differential expression this time adjusting for these
 surrogate variables.
 
