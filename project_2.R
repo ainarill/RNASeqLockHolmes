@@ -69,25 +69,22 @@ multidensity(as.list(as.data.frame(assays(lclse_control)$logCPM)), xlab = "log2 
              main = "", cex.axis = 1.2, cex.lab = 1.5, las = 1)
 
 
-# -------------------------------------------------------
+# ------------------------------------------------------ FILTER OUT LOWLY EXPRESSED GENES-
 # Distribution of expression among genes
+
+# Visualize
 avgexp <- rowMeans(assays(lclse.paired)$logCPM)
 par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
 hist(avgexp, xlab = expression(log[2] * "CPM"), main = "", las = 1, col = "gray")
-abline(v = log(8.3), col = "red", lwd = 2)
-cpmcutoff <- round(10/min(dge$sample$lib.size/1e+06), digits = 1)
-# Filter out genes based on expression values
+abline(v = 0, col = "red", lwd = 2)
+cpmcutoff <- round(10/min(dge.paired$sample$lib.size/1e+06), digits = 1)
 
-
-
-# Eliminating from cutoff
-nsamplescutoff <- min(table(lclse$gender))
-mask <- rowSums(cpm(dge) > cpmcutoff) >= nsamplescutoff
-lclse.filt <- lclse[mask, ]
-dge.filt <- dge[mask, ]
+# Eliminate
+nsamplescutoff <- min(table(lclse.paired$gender))
+mask <- rowSums(cpm(dge.paired) > cpmcutoff) >= nsamplescutoff
+lclse.filt <- lclse.paired[mask, ]
+dge.filt <- dge.paired[mask, ]
 dim(lclse.filt)
-#--- DGE FILT NOW CONTAINS LESS GENES. 
-
 # plotting
 par(mar = c(4, 5, 1, 1))
 h <- hist(avgexp, xlab = expression("Expression level (" * log[2] * "CPM)"), main = "",
@@ -96,6 +93,11 @@ x <- cut(rowMeans(assays(lclse.filt)$logCPM), breaks = h$breaks)
 lines(h$mids, table(x), type = "h", lwd = 10, lend = 1, col = "darkred")
 legend("topright", c("All genes", "Filtered genes"), fill = c("grey", "darkred"))
 
+# Save an unnormalized version 
+saveRDS(lclse.filt, file.path("results", "lclse.filt.unnorm.rds"))
+saveRDS(dge.filt, file.path("results", "dge.filt.unnorm.rds"))
+
+# ------------------------------------------ MA PLOTS
 # Quality assesment : MA plots
 dge$samples$group <- lclse$gender
 table(dge$samples$group)
