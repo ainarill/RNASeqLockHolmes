@@ -129,43 +129,37 @@ dge.filt_na <- dge.filt[,mask ]
 plotSmear(dge.filt_na,lowess=TRUE, las = 1, cex.lab = 1.5, cex.axis = 1.2) 
 abline(h = 0, col = "blue", lwd = 2)
 
-# TMM NORMALIZATION 
+# ----------------------------------- TMM NORMALIZATION 
+dge.filt <- calcNormFactors(dge.filt) 
+head(dge.filt$samples$norm.factors)
+head(dge.filt$samples$lib.size * dge.filt$samples$norm.factors)
 
-#First Plot 
-par(mfrow = c(1, 2))
-mask_remove_na <- !is.na(dge$samples$group)
-dge_na <- dge[,mask_remove_na ]
-plotSmear(dge_na, lowess = TRUE, las = 1, cex.lab = 1.5, cex.axis = 1.2) 
+#Plot after TMM
+coadse.filt_na <- coadse.filt[, mask]
+dge.filt_na <- dge.filt[,mask ]
+plotSmear(dge.filt_na, lowess = TRUE, las = 1, cex.lab = 1.5, cex.axis = 1.2) 
 abline(h = 0, col = "blue", lwd = 2)
-
-#Second plot
-dge.filt_na_tmm <- calcNormFactors(dge.filt_na) 
-head(dge.filt_na_tmm$samples$norm.factors)
-head(dge.filt_na_tmm$samples$lib.size * dge.filt_na_tmm$samples$norm.factors)
-plotSmear(dge.filt_na_tmm, lowess = TRUE, las = 1, cex.lab = 1.5, cex.axis = 1.2) 
-abline(h = 0, col = "blue", lwd = 2)
-
-
-# MA PLOTS
+# btw : same number of male and females (but we have some NAs too) 
 summary(coadse.filt_na$gender)
-summary(coadse.filt_na$race)
-summary(coadse.filt_na$ethnicity)
 
-# MA plots - only explorative
-par(mfrow=c(1, 2), mar=c(4, 5, 3, 1)) 
-for(i in 1:2){
+
+# MA plots - only explorative -- TODO !!!!!! Check if works
+coadse_tumor <- coadse.filt[,tumor_mask]
+coadse_control <- coadse.filt[,non_tumor_mask]
+par(mfrow=c(22, 3), mar=c(4, 5, 3, 1))
+
+for(i in 1:ncol(coadse_tumor)){
   A <- rowMeans(assays(coadse.filt)$logCPM) ;
   M <- assays(coadse.filt)$logCPM[, i] - A 
-  smoothScatter(A, M, main=colnames(coadse.filt)[i], las=1, cex.axis=1.2, cex.lab=1.5, cex.main=2) 
+  smoothScatter(A, M, main=colnames(coadse_tumor)[i], las=1, cex.axis=1.2, cex.lab=1.5, cex.main=2) 
   abline(h=0, col="blue", lwd=2) ;
   lo <- lowess(M ~ A) ; 
   lines(lo$x, lo$y, col="red", lwd=2)
 }
 
-# Normalization
-
+# ------------------------------- Between samples normalization 
 # Order values by samples keeping track of the original order
-m <- assays(coadse.filt_na)$logCPM
+m <- assays(coadse.filt)$logCPM
 originalOrder <- apply(m, 2, order)
 m <- apply(m, 2, sort)
 nsamples<- ncol(m)
@@ -181,11 +175,11 @@ apply(m, 2, sd)
 
 
 # visualization 
-plotMDS(dge.filt_na_tmm, col = c("red", "blue")[as.integer(dge.filt$samples$group)], cex = 0.7) 
+plotMDS(dge.filt, col = c("red", "blue")[as.integer(dge.filt$samples$group)], cex = 0.7) 
 legend("topleft", c("female", "male"), fill = c("red", "blue"), inset = 0.05, cex = 0.7)
 
-plotMDS(dge.filt_na_tmm, col = c("red", "orange", "blue")[as.integer(coadse$concentration)], cex = 0.7)
-legend("topleft", levels(coadse$concentration), fill = c("red", "orange", "blue"), inset = 0.05, cex = 0.7)
+plotMDS(dge.filt, col = c("red", "orange", "blue")[as.integer(coadse.filt$race)], cex = 0.7)
+legend("topleft", levels(coadse.filt$race), fill = c("red", "orange", "blue"), inset = 0.05, cex = 0.7)
 # missing: eliminate outliers
 
 # ------------------------------------------------------------------------------------------------------------
