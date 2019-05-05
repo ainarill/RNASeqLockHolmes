@@ -1,7 +1,7 @@
 # RNASeqLockHolmes
 ## Pipeline for differential expression analysis of RNAseq data.
 
-*Luisa Santus, Aina Rill and Altaïr C.Hernández *
+*Luisa Santus, Aina Rill and Altaïr C.Hernández*
 
 ## **Index**
 
