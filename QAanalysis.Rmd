@@ -356,10 +356,9 @@ the cross-classification of this outcome with TSS.
 table(data.frame(TYPE=coadse.filt$type, TSS=tss))
 ```
 
-We can observe that 
-Observe that normal tissues with `TSS=KM` or `TSS=KO` are under-represented with respect to
-the tumor tissues. If TSS is a source of expression variability, this under-representation
-of those two TSS in the normal samples may lead to a potential confounding effect.
+We can observe that both normal and tumor tissues are well represented in all the TSS
+groups, although the in the `F4` group there are a few number of samples, as said before.
+Therefore, we can proceed to check if TSS is a source of expression variability.
 
 We examine now how samples group together by hierarchical clustering and multidimensional
 scaling, annotating the outcome of interest and the the surrogate of batch indicator. We
