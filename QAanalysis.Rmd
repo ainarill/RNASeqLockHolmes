@@ -108,9 +108,21 @@ of expression. Negative ones correspond to very low expressed samples.
 
 From the total of 524 samples, before starting to analyse the data we proceed to do a subset of paired samples (tumor and non-tumor samples extracted from the same patient). The reason of doing this is to reduce the within variance, as far as variation between different individuals could be found due to environmental factors. In order to a better estimate of these expression level differences between Tumor and Non-tumor samples, we searched in the [TCGA barcode](https://docs.gdc.cancer.gov/Encyclopedia/pages/TCGA_Barcode/) those patients that were present in both Tumor and Non-tumor samples. This meant that those samples belonged to the same patient and, thus, were paired.
 
+<!-- Create a subset - paired 
+Only select the paired samples -->
+
 ```{r}
-CODE FOR PAIRED SAMPLE SUBSET!!
+df <- data.frame(rbind(table(substr(colnames(coadse),9,12), substr(colnames(coadse),14,15))))
+df_filt <- df[df$X01 + df$X02 + df$X06> 0,]
+df_paired <- df_filt[df_filt$X11>0,]
+paired_mask <- substr(colnames(coadse),9,12) %in% rownames(df_paired)
+
+coadse.paired<- coadse[,paired_mask]
+dge.paired <- dge[,paired_mask]
+table(coadse.paired$type)
 ```
+
+As is shown in this table, we finally found a total of **41 non-tumor** samples and **46 tumor** paired samples. Note that there are more tumor samples than non-tumor, possibly done that more than one tumor sample was obtained from the same patient. However, we consider that with this number of samples should be sufficient powered to detect expression changes between tumor and non-tumor samples.
 
 ## Sequencing depth
 
@@ -167,6 +179,7 @@ legend("topleft", c("Normal", "Tumor"), fill = c("cyan", "orange"), inset = 0.01
 ```
 
 ## Gender among samples
+
 In order to collect an even broader understanding of the dataset we then furher explore the sequencing 
 depth highlighting female and male samples.
 
@@ -189,7 +202,9 @@ assays(coadse.paired)$logCPM <- cpm(dge.paired, log = TRUE, prior.count = 0.25)
 
 We are then interested in exploring the distribution of the expression levels through
 all the samples in terms of logarithmic CPM units.
+
 ```{r disrRawExpAll, echo=FALSE, fig.height=4, fig.width=10, out.width="800px", fig.cap="Non-parametric density distribution of expression profiles per sample.", message=FALSE}
+library(geneplotter)
 par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
 multidensity(as.list(as.data.frame(assays(coadse.paired)$logCPM)), xlab = "log2 CPM", legend = NULL,
              main = "All samples", cex.axis = 1.2, cex.lab = 1.5, las = 1)
@@ -256,10 +271,12 @@ legend("topright", c("All genes", "Filtered genes"), fill = c("grey", "darkred")
 
 Before proceeding with the normalization steps, we prefer to save a copy of the unnormalized data 
 in case we later need to work on it again.
+
 ```{r}
-saveRDS(se.filt, file.path("results", "se.filt.unnorm.rds"))
+saveRDS(coadse.filt, file.path("results", "se.filt.unnorm.rds"))
 saveRDS(dge.filt, file.path("results", "dge.filt.unnorm.rds"))
 ```
+
 ## Normalization
 
 Since different samples may have different RNA compositions and this could be problematic for further analyses
@@ -275,7 +292,7 @@ assays(coadse.filt)$logCPM <- cpm(dge.filt, log=TRUE, normalized.lib.sizes=TRUE,
 Again, we like to keep on with the good practice of storing intermediate generated files.  
 
 ```{r}
-saveRDS(se.filt, file.path("results", "coadse.filt.rds"))
+saveRDS(coadse.filt, file.path("results", "coadse.filt.rds"))
 saveRDS(dge.filt, file.path("results", "dge.filt.rds"))
 ```
 
@@ -325,7 +342,7 @@ next step of the analysis without modifying the dataset we work with.
 The next step will be the search for potential surrogate of batch effect indicators. Batch effect include sub-groups of measurements that have qualitatively different behaviour across conditions and are unrelated to the biological variables in the study.
 As normalization of the data can not always remove completely the batch effect, we are going to identify this effect, adjust it and eventually correct it.
 
-Given that each sample names corresponds to a TCGA barcode (see https://wiki.nci.nih.gov/display/TCGA/TCGA+barcode), following the strategy described in http://bioinformatics.mdanderson.org/main/TCGABatchEffects:Overview we are going to derive different elements of the TCGA barcode and examine their distribution across samples.
+Given that each sample names corresponds to a [TCGA barcode](https://docs.gdc.cancer.gov/Encyclopedia/pages/TCGA_Barcode/), following the strategy described in http://bioinformatics.mdanderson.org/main/TCGABatchEffects:Overview we are going to derive different elements of the TCGA barcode and examine their distribution across samples.
 
 ```{r}
 tss <- substr(colnames(dge.filt), 6, 7)
@@ -343,19 +360,19 @@ table(plate)
 
 From this information we can make the following observations:
 
-  * *TSS*: Samples were collected across 4 different tissue source sites (TSS), with poor representation of one of them       (F4).
+  * *TSS*: Samples were collected across 4 different tissue source sites (TSS), with poor representation of one of them (F4).
   
-  * *Sample Vial*: 44 samples belong to solid tumor samples(**01 code**) whereas 39 do not (**11 code**). The 44           solid tumor samples where distributed in 3 different vials (A, B, C) whereas the 39 non tumor samples where put in      the same vial (A). 
+  * *Sample Vial*: 44 samples belong to solid tumor samples(**01 code**) whereas 39 do not (**11 code**). The 44 solid tumor samples where distributed in 3 different vials (A, B, C) whereas the 39 non tumor samples where put in the same vial (A). 
   
   * *Portions & Analyte*: samples where distributed in different portions and analytes combinations. 
   
   * *Plates*: Samples were sequenced in different plates.
+  
+  * *Center*: All samples were sequenced at the same center.
 
   * The analyte code of all samples is a `R` (RNA samples), as expected.
   
-  * All samples were sequenced at the same center.
-  
-  
+
 We are going to use the TSS as surrogate of batch effect indicator. Considering our outcome
 of interest as molecular changes between sample types, tumor vs. normal, we will examine now
 the cross-classification of this outcome with TSS.
@@ -395,7 +412,7 @@ legend("topright", paste("Batch", sort(unique(batch)), levels(factor(tss))), fil
 ```
 
 We can observe that samples cluster primarily by sample type, tumor or normal. TSS seems to have
-a stronger effect among the normal samples, while it distributes better among the tumor samples.
+a stronger effect among the tumor samples, while it distributes better among the tumor samples.
 We may consider discarding samples leading to an unbalanced distribution of the outcome across batches.
 
 In Figure \@ref(fig:mdsPlot) we show the corresponding MDS plot. Here we see more clearly that the first source of variation separates tumor from normal samples. We can also observe that two tumor samples, corresponding to individuals `KL-8404` and `KN-8427` are separated from the rest, just as it happens in the hierchical clustering. A closer examination of their corresponding MA-plots also reveals a slight dependence of expression changes on average expression. We may consider discarding these two samples and doing the MDS plot again to have a closer look to the differences among the rest of the samples and their relationship with TSS.
