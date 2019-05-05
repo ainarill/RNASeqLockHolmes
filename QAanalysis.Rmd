@@ -104,6 +104,14 @@ assays(coadse)$logCPM[1:5, 1:5]
 As we can see, for each sample there are different CPM (Counts Per Million) values
 of expression. Negative ones correspond to very low expressed samples. 
 
+## Subset of samples: Paired Analysis
+
+From the total of 524 samples, before starting to analyse the data we proceed to do a subset of paired samples (tumor and non-tumor samples extracted from the same patient). The reason of doing this is to reduce the within variance, as far as variation between different individuals could be found due to environmental factors. In order to a better estimate of these expression level differences between Tumor and Non-tumor samples, we searched in the [TCGA barcode](https://docs.gdc.cancer.gov/Encyclopedia/pages/TCGA_Barcode/) those patients that were present in both Tumor and Non-tumor samples. This meant that those samples belonged to the same patient and, thus, were paired.
+
+```{r}
+CODE FOR PAIRED SAMPLE SUBSET!!
+```
+
 ## Sequencing depth
 
 Before proceeding with any normalization or analysis step, we want to collect an overview of
