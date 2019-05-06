@@ -23,11 +23,11 @@ opts_chunk$set(cache=TRUE,
                fig.align="center",
                comment="")
 
-se <- readRDS(file.path("rawCounts", "seKICH.rds"))
+se <- readRDS(file.path("rawCounts", "seCOAD.rds"))
 dge <- readRDS(file.path("results", "dge.rds"))
-se.filt.unnorm <- readRDS(file.path("results", "se.filt.unnorm.rds"))
+se.filt.unnorm <- readRDS(file.path("results", "coadse.filt.unnorm.rds"))
 dge.filt.unnorm <- readRDS(file.path("results", "dge.filt.unnorm.rds"))
-se.filt <- readRDS(file.path("results", "se.filt.rds"))
+se.filt <- readRDS(file.path("results", "coadse.filt.rds"))
 dge.filt <- readRDS(file.path("results", "dge.filt.rds"))
 
 

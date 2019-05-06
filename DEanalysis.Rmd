@@ -43,6 +43,7 @@ The following step is to perform a simple examination of expression changes and 
 
 ```{r, message=FALSE}
 library(sva)
+tss <- substr(colnames(dge.filt), 6, 7)
 mod <- model.matrix(~ coadse.filt$type + tss, colData(coadse.filt))
 mod0 <- model.matrix(~tss, colData(coadse.filt))
 pv <- f.pvalue(assays(coadse.filt)$logCPM, mod, mod0)
