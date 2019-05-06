@@ -26,7 +26,7 @@ opts_chunk$set(cache=TRUE,
                fig.align="center",
                comment="")
 
-coadse <- readRDS(file.path("rawCounts", "coadseKICH.rds"))
+coadse <- readRDS(file.path("rawCounts", "seCOAD.rds"))
 dge <- readRDS(file.path("results", "dge.rds"))
 coadse.filt.unnorm <- readRDS(file.path("results", "coadse.filt.unnorm.rds"))
 dge.filt.unnorm <- readRDS(file.path("results", "dge.filt.unnorm.rds"))
@@ -66,7 +66,6 @@ sv$n
 ```
 
 The SVA algorithm has found `r sv$n` surrogate variables. So, we are going to use them to
-
 assess againt the extent of differential expression this time adjusting for these
 surrogate variables.
 

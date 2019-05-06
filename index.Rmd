@@ -25,7 +25,7 @@ bibliography: bibliography.bib
 Colorectal Cancer (CRC) is the second most common cancer in women (614,000 cases per year) 
 and the third most common in men(746,000 cases per year). Currently it is the most common 
 malignant cancer in the gatrointestinal tract, representing 13\% of all malignant tumors, 
-and it is considered the main cause of death in gastrointestinal cancer(Siegel RL, et al. 2015).
+and it is considered the main cause of death in gastrointestinal cancer @Siegel2015.
 It can be arised from one or a combination of three differen mechanisms, namely chromosmomal 
 inestability (CIN), CpG islands methylator phenotype (CIMP), and microsatellite inestability (MSI). 
 Understanding the specific mechanisms of tumorigenesis and the underlaying genetic and epigenetic

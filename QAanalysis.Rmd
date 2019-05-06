@@ -273,7 +273,7 @@ Before proceeding with the normalization steps, we prefer to save a copy of the 
 in case we later need to work on it again.
 
 ```{r}
-saveRDS(coadse.filt, file.path("results", "se.filt.unnorm.rds"))
+saveRDS(coadse.filt, file.path("results", "coadse.filt.unnorm.rds"))
 saveRDS(dge.filt, file.path("results", "dge.filt.unnorm.rds"))
 ```
 
@@ -412,10 +412,10 @@ legend("topright", paste("Batch", sort(unique(batch)), levels(factor(tss))), fil
 ```
 
 We can observe that samples cluster primarily by sample type, tumor or normal. TSS seems to have
-a stronger effect among the tumor samples, while it distributes better among the tumor samples.
+a stronger effect among the normal samples, while it distributes better among the tumor samples.
 We may consider discarding samples leading to an unbalanced distribution of the outcome across batches.
 
-In Figure \@ref(fig:mdsPlot) we show the corresponding MDS plot. Here we see more clearly that the first source of variation separates tumor from normal samples. We can also observe that two tumor samples, corresponding to individuals `KL-8404` and `KN-8427` are separated from the rest, just as it happens in the hierchical clustering. A closer examination of their corresponding MA-plots also reveals a slight dependence of expression changes on average expression. We may consider discarding these two samples and doing the MDS plot again to have a closer look to the differences among the rest of the samples and their relationship with TSS.
+In Figure \@ref(fig:mdsPlot) we show the corresponding MDS plot. Here we see more clearly that the first source of variation separates tumor from normal samples. We can also observe that two tumor samples, corresponding to individuals `A6-5665`, `A6-2884`, `A6-2569` and`A6-2684` are separated from the rest, just as it happens in the hierchical clustering. A closer examination of their corresponding MA-plots also reveals a slight dependence of expression changes on average expression. We may consider discarding these four samples and doing the MDS plot again to have a closer look to the differences among the rest of the samples and their relationship with TSS.
 
 ```{r mdsPlot, fig.height=7, fig.width=14, dpi=100, echo=TRUE, fig.cap="Figure S7: Multidimensional scaling plot of the samples."}
 plotMDS(dge.paired, labels=outcome, col=batch)
