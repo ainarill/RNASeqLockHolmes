@@ -112,11 +112,9 @@ From the total of 524 samples, before starting to analyse the data we proceed to
 Only select the paired samples -->
 
 ```{r}
-df <- data.frame(rbind(table(substr(colnames(coadse),9,12), substr(colnames(coadse),14,15))))
-df_filt <- df[df$X01 + df$X02 + df$X06> 0,]
-df_paired <- df_filt[df_filt$X11>0,]
-paired_mask <- substr(colnames(coadse),9,12) %in% rownames(df_paired)
-
+df <-  data.frame(rbind(table(coadse$bcr_patient_barcode, coadse$type)))
+df_paired<-df[(df$normal > 0) & (df$tumor > 0),]
+paired_mask <-coadse$bcr_patient_barcode  %in% rownames(df_paired)
 coadse.paired<- coadse[,paired_mask]
 dge.paired <- dge[,paired_mask]
 table(coadse.paired$type)
@@ -422,6 +420,40 @@ plotMDS(dge.paired, labels=outcome, col=batch)
 legend("bottomleft", paste("Batch", sort(unique(batch)), levels(factor(tss))),
        fill=sort(unique(batch)), inset=0.05)
 ```
+
+
+## Differential expression analysis
+
+We used linear regression models to approach the differential expression (DE) analysis; for this purpose we used the R package "limma", which is widely used and well documented.
+
+ !!!! Se tiene q redactar de verdad
+ 
+Linear regression models are used in order to represent, in the most accurate way possible, something which is very complex. In the specific case of DE analysis, the linear regression is used as a predictor of gene expression values. 
+For the purpose of fitting the said regression model, it is then crucial to build a design matrix in order to solve the system of equations (as many equations as type of samples). The design matrix is a n x m matrix, where n is the number of samples and m is the number of coeffients which need to be estimated or the types of samples, like case and controls; it basically contains the information about which coefficient will be set to 0 in order to observe the difference of expression for the other one.
+In the following step we proceed with the building of the design matrix. 
+```{r}
+mod <- model.matrix(~type + bcr_patient_barcode , data = colData(coadse.filt))
+```
+
+The next step is to Adjust for the mean-variance realtionship. Two main methods are currently available. We decide to proceed with the voom() function, since as we can observe in the picture below, there are big differences in sample sizes among the samples.
+```{r}
+barplot(sort(dge.filt$samples$lib.size)/1e+06, xlab = "Samples", ylab = "Library sizes (Millions)")
+```
+```{r}
+v <- voom(dge.filt, mod, plot=TRUE)
+```
+
+Next, we estimate correlation in repeated measurements of a blocking factor
+!!!! MISSING THIS!
+```{r}
+fit1<- lmFit(v, mod)
+```
+
+```{r}
+fit <- eBayes(fit1)
+topTable(fit, coef = 2 , n = Inf)
+```
+
 
 
 ## Session information
