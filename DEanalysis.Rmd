@@ -84,6 +84,42 @@ Figure \@ref(fig:psvdist) shows the resulting distribution of p-values.
 hist(pvsv, main="", las=1)
 ```
 
+## -----------------------------
+## Differential expression analysis
+
+We used linear regression models to approach the differential expression (DE) analysis; for this purpose we used the R package "limma", which is widely used and well documented.
+
+ !!!! Se tiene q redactar de verdad
+ 
+Linear regression models are used in order to represent, in the most accurate way possible, something which is very complex. In the specific case of DE analysis, the linear regression is used as a predictor of gene expression values. 
+For the purpose of fitting the said regression model, it is then crucial to build a design matrix in order to solve the system of equations (as many equations as type of samples). The design matrix is a n x m matrix, where n is the number of samples and m is the number of coeffients which need to be estimated or the types of samples, like case and controls; it basically contains the information about which coefficient will be set to 0 in order to observe the difference of expression for the other one.
+In the following step we proceed with the building of the design matrix. 
+```{r}
+mod <- model.matrix(~type + bcr_patient_barcode , data = colData(coadse.filt))
+mod
+```
+
+The next step is to Adjust for the mean-variance realtionship. Two main methods are currently available. We decide to proceed with the voom() function, since as we can observe in the picture below, there are big differences in sample sizes among the samples.
+```{r}
+barplot(sort(dge.filt$samples$lib.size)/1e+06, xlab = "Samples", ylab = "Library sizes (Millions)")
+```
+```{r}
+v <- voom(dge.filt, mod, plot=TRUE)
+```
+
+Next, we estimate correlation in repeated measurements of a blocking factor
+The function lmfit fits a linear model for each gene given a series of arrays
+
+```{r}
+fit1<- lmFit(v,mod)
+```
+
+```{r}
+fit <- eBayes(fit1)
+topTable(fit , coef = 2, n = Inf)
+```
+
+
 ## Session information
 
 ```{r, message=FALSE}
