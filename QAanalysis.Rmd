@@ -590,6 +590,23 @@ legend("bottomleft", paste("Batch", sort(unique(batch)), levels(factor(tss))),
        fill=sort(unique(batch)), inset=0.05)
 ```
 
+## Batch Identification for tumor data.
+```{r}
+tss.tumor <- substr(colnames(dge.tumor.filt), 6, 7)
+table(tss.tumor)
+center.tumor <- substr(colnames(dge.tumor.filt), 27, 28)
+table(center.tumor)
+samplevial.tumor <- substr(colnames(dge.tumor.filt), 14, 16)
+table(samplevial.tumor)
+portionanalyte.tumor <- substr(colnames(dge.tumor.filt), 18, 20)
+table(portionanalyte.tumor)
+plate.tumor <- substr(colnames(dge.tumor.filt), 22, 25)
+table(plate.tumor)
+
+```
+
+OKEY MIRANDO LOS PLOTS DE ESTA GENTE CREO QUE NO HAY BATCH EN NINGUNA COSA, NO ME HA DADO TIEMPO A HACERLO. LUEGO LO DISCUTIMOS A VER QUE CREEIS QUE DEBERIAMOS PONER EN ESTA PARTE.
+BESIS
 
 
 ## Session information
