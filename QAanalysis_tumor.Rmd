@@ -1,0 +1,362 @@
+---
+title: "QAanalysis_tumor"
+output:
+  BiocStyle::html_document
+---
+
+<!---
+The following chunk of code, which should not be shown in the resulting document (echo=FALSE)
+sets up global processing options, such as forcing 'knitr' to stop when an error
+in the R code is encountered, caching of the results in the 'cache'
+directory and asking 'knitr' to figure out automatically the dependencies among
+code chunks to re-calculate cached results (autodep=TRUE).
+
+Other options could be changing the name of the directory where figures end up
+('figure' by default), etc. For a full account of 'knitr' options please consult
+http://yihui.name/knitr/options
+
+At the end of the chunk a 'cat()' call is made to dump a CSS file that gives
+a better look-and-feel than the knitr default one. See the source css/ieo.css
+and the resulting projectTemplate.html to understand where this is being dumpted.
+--->
+
+
+```{r setup, cache=FALSE, echo=FALSE, results='hide', message=FALSE}
+library(knitr)
+
+opts_chunk$set(cache=TRUE,
+               cache.path="cache/QA",
+               cache.extra=R.version.string,
+               autodep=TRUE,
+               fig.align="center",
+               comment="")
+```
+
+# Quality assessment
+
+## Subset of samples: Tumor data
+
+From the total of samples before starting to analyse the data, we proceed to do a subset that only includes the tumor data. The reason of doing this is because we are interested also in the differential expression analysis between the different stages of the Colon Adenocarcinoma Cancer. 
+
+In order to create the subset, we looked for those samples that had "tumor" as their type and discarded those with "normal" type. We also discarded those samples that had no information about the stage of the tumor.
+
+Although the data is categorized in diverse subgroups, we will work with the following ones: stage I, stage II, stage III and stage IV, being each one the sum of all the subcategories that share the same stage number:
+ 
+```{r}
+filter_tumor_mask <- rownames(colData(coadse)[colData(coadse)$type == "tumor",])
+coadse.tumor <- coadse[, filter_tumor_mask]
+coadse.tumor <- coadse.tumor[, !is.na(coadse.tumor$ajcc_pathologic_tumor_stage)]
+coadse.tumor <- coadse.tumor[, coadse.tumor$ajcc_pathologic_tumor_stage != "[Not Available]"]
+coadse.tumor$ajcc_pathologic_tumor_stage <- gsub(x = coadse.tumor$ajcc_pathologic_tumor_stage, pattern = "A", replacement = "")
+coadse.tumor$ajcc_pathologic_tumor_stage <- gsub(x = coadse.tumor$ajcc_pathologic_tumor_stage, pattern = "B", replacement = "")
+coadse.tumor$ajcc_pathologic_tumor_stage <- gsub(x = coadse.tumor$ajcc_pathologic_tumor_stage, pattern = "C", replacement = "")
+table(coadse.tumor$ajcc_pathologic_tumor_stage)
+```
+
+## Sequencing depth among tumor samples
+
+First of all, we want to collect an overview of the data that we are working with. Starting  examining the sequencing depth by plotting the total number of reads mapped to the genome per sample.
+
+```{r libsizes, echo=FALSE, out.width="600px", fig.cap="Library sizes in increasing order."}
+genes.tumor <- data.frame(chr = as.character(seqnames(rowRanges(coadse.tumor))), symbol = rowData(coadse.tumor)[,1], stringsAsFactors = FALSE)
+dge.tumor <- DGEList(counts = assays(coadse.tumor)$counts, genes = genes.tumor, group = coadse.tumor$ajcc_pathologic_tumor_stage,)
+dge.tumor
+sampledepth.tumor <- round(dge.tumor$sample$lib.size / 1e6, digits=1)
+names(sampledepth.tumor) <- substr(colnames(coadse.tumor), 6, 12)
+sort(sampledepth.tumor)
+par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
+ord.tumor <- order(dge.tumor$sample$lib.size)
+
+ggplot(as.data.frame(dge.tumor$samples), aes(x = row.names(dge.tumor$samples), y = dge.tumor$samples$lib.size[ord.tumor]/1000000, fill = dge.tumor$samples$group[ord.tumor])) + geom_bar(stat = "identity") + theme_bw() + theme(legend.title = element_blank(), axis.text.x=element_blank()) + ylab("Milions of reads") + xlab("Samples")
+
+```
+
+Looking at this plot, we can see two important details that we must take into consideration. 
+The first one is that all four stages have different samples with different sequencing depth.
+The other one is that we observe that within the considerable differences in the sequencing depth of some samples, we can distinguish a some samples on the left part of the graph that present considerably low sequencing depths: this may generate problems in further analysis of the data and that is why we then wanted to remove these samples as shown below:
+OJO MUCHOS NA EN LOS NAMES, NO ENTIENDO PORQUÉ.
+ARBITRARIAMENTE DECIDO BORRAR AQUELLAS CON MENOS DE 10, PORQUE ES APROX LO QUE HEMOS QUITADO EN EL PAIRED. LOS DEL AÑO PASADO HACEN OTRA COSA QUE QUIZAS ESTA MEJOR. LO PODEMOS CAMBIAR FACILMENTE, OS LO COMENTO CUANDO QUEDEMOS.
+
+```{r}
+# Remove those samples with very low sequencing depth (<10)
+coadse.tumor <- coadse.tumor[, dge.tumor$samples$lib.size >= 10*1e06]
+dge.tumor <- DGEList(counts = assays(coadse.tumor)$counts, group = coadse.tumor$ajcc_pathologic_tumor_stage, genes = genes.tumor)
+```
+
+By doing this, we have lost 21 samples from our dataset.
+Here we can observe again the same plot as before after having removed the samples with less coverage depth.
+
+```{r}
+# coverage_filtered plot
+par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
+ord.tumor <- order(dge.tumor$sample$lib.size)
+ggplot(as.data.frame(dge.tumor$samples), aes(x = row.names(dge.tumor$samples), y = dge.tumor$samples$lib.size[ord.tumor]/1000000, fill = dge.tumor$samples$group[ord.tumor])) + geom_bar(stat = "identity") + theme_bw() + theme(legend.title = element_blank(), axis.text.x=element_blank()) + ylab("Milions of reads") + xlab("Samples")
+```
+
+
+## Gender among samples in tumor data
+```{r}
+ord2 <- order(dge.tumor$sample$lib.size)
+barplot(dge.tumor$sample$lib.size[ord2]/1e+06, las = 1, ylab = "Millions of reads", xlab = "Samples",
+        col = c("cyan", "orange")[coadse.tumor$gender[ord2]], border = NA)
+legend("topleft", c("Female", "Male"), fill = c("cyan", "orange"), inset = 0.01)
+```
+
+In the figure we can see that, as happened with the paired analysis, not only we have a similar number of female and male samples, but their sequencing depth is quite well equilibrated as we cannot clearly identify any defined clustering event.
+
+## Distribution of expression levels among samples in tumor data
+
+As we have done in the paired analysis, we first run a within sample normalization and then we explore the distribution of the expression levels through all the samples in terms of logarithmic CPM units.
+
+```{r disrRawExpAll, echo=FALSE, fig.height=4, fig.width=10, out.width="800px", fig.cap="Non-parametric density distribution of expression profiles per sample.", message=FALSE}
+CPM <- t(t(dge.tumor$counts)/(dge.tumor$samples$lib.size/1e+06))
+assays(coadse.tumor)$logCPM <- cpm(dge.tumor, log = TRUE, prior.count = 0.25)
+library(geneplotter)
+par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
+multidensity(as.list(as.data.frame(assays(coadse.tumor)$logCPM)), xlab = "log2 CPM", legend = NULL,
+             main = "All samples", cex.axis = 1.2, cex.lab = 1.5, las = 1)
+```
+
+To provide a clearer visualization, we decided to divide the dataset into four smaller subsets, one for each stage. Figure \@ref(fig:distRawExpComp) shows the expression levels in terms of logCPM for the different stages of tumor samples separately.
+
+```{r disrRawExpComp, echo=FALSE, fig.height=8, fig.width=10, out.width="800px", fig.cap="Non-parametric density distribution of expression profiles per sample.", message=FALSE}
+stage1_mask <- coadse.tumor$ajcc_pathologic_tumor_stage == "Stage I"
+stage2_mask <- coadse.tumor$ajcc_pathologic_tumor_stage == "Stage II"
+stage3_mask <- coadse.tumor$ajcc_pathologic_tumor_stage == "Stage III"
+stage4_mask <- coadse.tumor$ajcc_pathologic_tumor_stage == "Stage IV"
+coadse_stage1 <- coadse.tumor[,stage1_mask]
+coadse_stage2 <- coadse.tumor[,stage2_mask]
+coadse_stage3 <- coadse.tumor[,stage3_mask]
+coadse_stage4 <- coadse.tumor[,stage4_mask]
+# Plot divided by stages for a better overview
+par(mfrow=c(2, 2))
+multidensity(as.list(as.data.frame(assays(coadse_stage1)$logCPM)), xlab = "log2 CPM", legend = NULL,
+           main = "Stage I", cex.axis = 1.2, cex.lab = 1.5, las = 1)
+multidensity(as.list(as.data.frame(assays(coadse_stage2)$logCPM)), xlab = "log2 CPM", legend = NULL,
+             main = "Stage II", cex.axis = 1.2, cex.lab = 1.5, las = 1)
+multidensity(as.list(as.data.frame(assays(coadse_stage3)$logCPM)), xlab = "log2 CPM", legend = NULL,
+             main = "Stage III", cex.axis = 1.2, cex.lab = 1.5, las = 1)
+multidensity(as.list(as.data.frame(assays(coadse_stage4)$logCPM)), xlab = "log2 CPM", legend = NULL,
+             main = "Stage IV", cex.axis = 1.2, cex.lab = 1.5, las = 1)
+
+```
+
+As we do not observe extreme differences in the distribution of the expression values in the different tumor stages, we decide to not exclude any sample from the dataset in this step.
+
+## Distribution of expression levels among genes in tumor data
+
+We now want to look if there is any gene which has very low expression to exclude them from the dataset. In order to do so, we calculate the average expression of each gene for all the samples and plot their distribution in Figure \@ref(fig:exprdist).
+
+```{r}
+coadse.tumor <- coadse.tumor[, dge.tumor$samples$lib.size >= 26*1e06]
+dge.tumor2 <- DGEList(counts = assays(coadse.tumor)$counts, group = coadse.tumor$ajcc_pathologic_tumor_stage, genes = genes.tumor)
+assays(coadse.tumor)$logCPM <- cpm(dge.tumor2, log = TRUE, prior.count = 0.25)
+coadse.tumor
+```
+
+```{r exprdist, echo=FALSE, out.width="400px", fig.cap="Distribution of average expression level per gene."}
+avgexp.tumor <- rowMeans(assays(coadse.tumor)$logCPM)
+par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
+hist(avgexp.tumor, xlab = expression(log[2] * "CPM"), main = "", las = 1, col = "gray")
+abline(v = 0, col = "red", lwd = 2)
+```
+
+## Filtering of lowly-expressed genes in tumor data
+
+To calculate the cutoff to filter the lowly-expressed genes we did the following:
+
+```{r}
+cpmcutoff.tumor <- round(10/min(dge.tumor2$sample$lib.size/1e+06), digits = 1)
+sprintf("Cutoff: %s", cpmcutoff.tumor)
+nsamplescutoff.tumor <- min(table(coadse.tumor$ajcc_pathologic_tumor_stage))
+mask.tumor <- rowSums(cpm(dge.tumor2) > cpmcutoff.tumor) >= nsamplescutoff.tumor
+coadse.tumor.filt <- coadse.tumor[mask.tumor, ]
+dge.tumor.filt <- dge.tumor2[mask.tumor, ]
+```
+
+Once we have identified the cutoff, we filter out the genes that are below the said cutoff.
+We can visually observe which genes have been left out from the datatset in Figure \@ref(fig:filter)
+
+```{r filter}
+par(mar = c(4, 5, 1, 1))
+h <- hist(avgexp.tumor, xlab = expression("Expression level (" * log[2] * "CPM)"), main = "",
+          las = 1, col = "grey", cex.axis = 1.2, cex.lab = 1.5)
+x <- cut(rowMeans(assays(coadse.tumor.filt)$logCPM), breaks = h$breaks)
+lines(h$mids, table(x), type = "h", lwd = 10, lend = 1, col = "darkred")
+legend("topright", c("All genes", "Filtered genes"), fill = c("grey", "darkred"))
+```
+
+
+## Normalization tumor data
+
+```{r}
+dge.tumor.filt <- calcNormFactors(dge.tumor.filt) 
+assays(coadse.tumor.filt)$logCPM <- cpm(dge.tumor.filt, log=TRUE, normalized.lib.sizes=TRUE, prior.count=0.25)
+```
+
+```{r}
+saveRDS(coadse.tumor.filt, file.path("results", "coadse.tumor.rds"))
+saveRDS(dge.tumor.filt, file.path("results", "dge.tumor.filt.rds"))
+```
+
+
+## MA plots tumor data
+
+For Stage I --> 
+```{r maPlotsTumor, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage I."}
+Stage1 <- coadse.tumor.filt[, coadse.tumor.filt$ajcc_pathologic_tumor_stage == "Stage I"]
+par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
+for (i in 1:ncol(Stage1)) {
+A <- rowMeans(assays(Stage1)$logCPM) 
+M <- assays(Stage1)$logCPM[, i] - A
+smoothScatter(A, M, main=colnames(Stage1)[i], las=1, cex.axis=1, cex.lab=1.2, cex.main=1)
+abline(h=0, col="blue", lwd=2) ; lo <- lowess(M ~ A) ; lines(lo$x, lo$y, col="red", lwd=2)
+}
+```
+
+For Stage II --> 
+```{r maPlotsTumor, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage I."}
+Stage2 <- coadse.tumor.filt[, coadse.tumor.filt$ajcc_pathologic_tumor_stage == "Stage II"]
+par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
+for (i in 1:ncol(Stage2)) {
+A <- rowMeans(assays(Stage2)$logCPM) 
+M <- assays(Stage2)$logCPM[, i] - A
+smoothScatter(A, M, main=colnames(Stage2)[i], las=1, cex.axis=1, cex.lab=1.2, cex.main=1)
+abline(h=0, col="blue", lwd=2) ; lo <- lowess(M ~ A) ; lines(lo$x, lo$y, col="red", lwd=2)
+}
+```
+
+
+For Stage III --> 
+```{r maPlotsTumor, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage I."}
+Stage3 <- coadse.tumor.filt[, coadse.tumor.filt$ajcc_pathologic_tumor_stage == "Stage III"]
+par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
+for (i in 1:ncol(Stage3)) {
+A <- rowMeans(assays(Stage3)$logCPM) 
+M <- assays(Stage3)$logCPM[, i] - A
+smoothScatter(A, M, main=colnames(Stage3)[i], las=1, cex.axis=1, cex.lab=1.2, cex.main=1)
+abline(h=0, col="blue", lwd=2) ; lo <- lowess(M ~ A) ; lines(lo$x, lo$y, col="red", lwd=2)
+}
+```
+
+For Stage IV --> 
+```{r maPlotsTumor, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage I."}
+Stage4 <- coadse.tumor.filt[, coadse.tumor.filt$ajcc_pathologic_tumor_stage == "Stage IV"]
+par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
+for (i in 1:ncol(Stage4)) {
+A <- rowMeans(assays(Stage4)$logCPM) 
+M <- assays(Stage4)$logCPM[, i] - A
+smoothScatter(A, M, main=colnames(Stage4)[i], las=1, cex.axis=1, cex.lab=1.2, cex.main=1)
+abline(h=0, col="blue", lwd=2) ; lo <- lowess(M ~ A) ; lines(lo$x, lo$y, col="red", lwd=2)
+}
+```
+## Batch identification
+
+The next step will be the search for potential surrogate of batch effect indicators. Batch effect include sub-groups of measurements that have qualitatively different behaviour across conditions and are unrelated to the biological variables in the study.
+As normalization of the data can not always remove completely the batch effect, we are going to identify this effect, adjust it and eventually correct it.
+
+Given that each sample names corresponds to a [TCGA barcode](https://docs.gdc.cancer.gov/Encyclopedia/pages/TCGA_Barcode/), following the strategy described in http://bioinformatics.mdanderson.org/main/TCGABatchEffects:Overview we are going to derive different elements of the TCGA barcode and examine their distribution across samples.
+
+```{r}
+tss <- substr(colnames(dge.filt), 6, 7)
+table(tss)
+center <- substr(colnames(dge.filt), 27, 28)
+table(center)
+samplevial <- substr(colnames(dge.filt), 14, 16)
+table(samplevial)
+portionanalyte <- substr(colnames(dge.filt), 18, 20)
+table(portionanalyte)
+plate <- substr(colnames(dge.filt), 22, 25)
+table(plate)
+
+```
+
+From this information we can make the following observations:
+
+  * *TSS*: Samples were collected across 4 different tissue source sites (TSS), with poor representation of one of them (F4).
+  
+  * *Sample Vial*: 44 samples belong to solid tumor samples(**01 code**) whereas 39 do not (**11 code**). The 44 solid tumor samples where distributed in 3 different vials (A, B, C) whereas the 39 non tumor samples where put in the same vial (A). 
+  
+  * *Portions & Analyte*: samples where distributed in different portions and analytes combinations. 
+  
+  * *Plates*: Samples were sequenced in different plates.
+  
+  * *Center*: All samples were sequenced at the same center.
+
+  * The analyte code of all samples is a `R` (RNA samples), as expected.
+  
+
+We are going to use the TSS as surrogate of batch effect indicator. Considering our outcome
+of interest as molecular changes between sample types, tumor vs. normal, we will examine now
+the cross-classification of this outcome with TSS.
+
+```{r}
+table(data.frame(TYPE=coadse.filt$type, TSS=tss))
+```
+
+We can observe that both normal and tumor tissues are well represented in all the TSS
+groups, although the in the `F4` group there are a few number of samples, as said before.
+Therefore, we can proceed to check if TSS is a source of expression variability.
+
+We examine now how samples group together by hierarchical clustering and multidimensional
+scaling, annotating the outcome of interest and the the surrogate of batch indicator. We
+calculate again log CPM values with a higher prior count to moderate extreme fold-changes
+produced by low counts. The resulting dendrogram is shown in Figure \@ref(fig:sampleClustering).
+
+```{r sampleClustering, fig.height=7, fig.width=14, dpi=100, echo=TRUE, fig.cap="Figure S6: Hierarchical clustering of the samples."}
+logCPM <- cpm(dge.paired, log=TRUE, prior.count=3)
+d <- as.dist(1-cor(logCPM, method="spearman"))
+sampleClustering <- hclust(d)
+batch <- as.integer(factor(tss))
+sampleDendrogram <- as.dendrogram(sampleClustering, hang=0.1)
+names(batch) <- colnames(coadse.filt)
+outcome <- paste(substr(colnames(coadse.filt), 9, 12), as.character(coadse.filt$type), sep="-")
+names(outcome) <- colnames(coadse.filt)
+sampleDendrogram <- dendrapply(sampleDendrogram,
+                               function(x, batch, labels) {
+                                 if (is.leaf(x)) {
+                                   attr(x, "nodePar") <- list(lab.col=as.vector(batch[attr(x, "label")]))
+                                   attr(x, "label") <- as.vector(labels[attr(x, "label")])
+                                 }
+                                 x
+                               }, batch, outcome)
+plot(sampleDendrogram, main="Hierarchical clustering of samples")
+legend("topright", paste("Batch", sort(unique(batch)), levels(factor(tss))), fill=sort(unique(batch)))
+```
+
+We can observe that samples cluster primarily by sample type, tumor or normal. TSS seems to have
+a stronger effect among the normal samples, while it distributes better among the tumor samples.
+We may consider discarding samples leading to an unbalanced distribution of the outcome across batches.
+
+In Figure \@ref(fig:mdsPlot) we show the corresponding MDS plot. Here we see more clearly that the first source of variation separates tumor from normal samples. We can also observe that two tumor samples, corresponding to individuals `A6-5665`, `A6-2884`, `A6-2569` and`A6-2684` are separated from the rest, just as it happens in the hierchical clustering. A closer examination of their corresponding MA-plots also reveals a slight dependence of expression changes on average expression. We may consider discarding these four samples and doing the MDS plot again to have a closer look to the differences among the rest of the samples and their relationship with TSS.
+
+```{r mdsPlot, fig.height=7, fig.width=14, dpi=100, echo=TRUE, fig.cap="Figure S7: Multidimensional scaling plot of the samples."}
+plotMDS(dge.paired, labels=outcome, col=batch)
+legend("bottomleft", paste("Batch", sort(unique(batch)), levels(factor(tss))),
+       fill=sort(unique(batch)), inset=0.05)
+```
+
+## Batch Identification for tumor data.
+```{r}
+tss.tumor <- substr(colnames(dge.tumor.filt), 6, 7)
+table(tss.tumor)
+center.tumor <- substr(colnames(dge.tumor.filt), 27, 28)
+table(center.tumor)
+samplevial.tumor <- substr(colnames(dge.tumor.filt), 14, 16)
+table(samplevial.tumor)
+portionanalyte.tumor <- substr(colnames(dge.tumor.filt), 18, 20)
+table(portionanalyte.tumor)
+plate.tumor <- substr(colnames(dge.tumor.filt), 22, 25)
+table(plate.tumor)
+
+```
+
+OKEY MIRANDO LOS PLOTS DE ESTA GENTE CREO QUE NO HAY BATCH EN NINGUNA COSA, NO ME HA DADO TIEMPO A HACERLO. LUEGO LO DISCUTIMOS A VER QUE CREEIS QUE DEBERIAMOS PONER EN ESTA PARTE.
+BESIS
+
+
+## Session information
+
+```{r, message=FALSE}
+sessionInfo()
+```

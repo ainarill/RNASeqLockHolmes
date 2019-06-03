@@ -123,29 +123,11 @@ table(coadse.paired$type)
 
 As is shown in this table, we finally found a total of **41 non-tumor** samples and **46 tumor** paired samples. Note that there are more tumor samples than non-tumor, possibly done that more than one tumor sample was obtained from the same patient. However, we consider that with this number of samples should be sufficient powered to detect expression changes between tumor and non-tumor samples.
 
-## Second subset of samples: tumor data
-
-
-```{r}
-filter_tumor_mask <- rownames(colData(coadse)[colData(coadse)$type == "tumor",])
-coadse.tumor <- coadse[, filter_tumor_mask]
-table(coadse.tumor$type)
-table(coadse.tumor$ajcc_pathologic_tumor_stage)
-````
-
-
-```{r}
-coadse.tumor <- coadse.tumor[, !is.na(coadse.tumor$ajcc_pathologic_tumor_stage)]
-coadse.tumor <- coadse.tumor[, coadse.tumor$ajcc_pathologic_tumor_stage != "[Not Available]"]
-
-table(coadse.tumor$ajcc_pathologic_tumor_stage)
-```
 
 ## Sequencing depth
 
 Before proceeding with any normalization or analysis step, we want to collect an overview of
-the data that we are working with. Here we examine the sequencing depth by plotting the total number of
-reads mapped to the genome per sample.
+the data that we are working with. Here we examine the sequencing depth by plotting the total number of reads mapped to the genome per sample.
 
 ```{r libsizes, echo=FALSE, out.width="600px", fig.cap="Library sizes in increasing order."}
 sampledepth <- round(dge.paired$sample$lib.size / 1e6, digits=1)
@@ -157,14 +139,10 @@ barplot(dge.paired$sample$lib.size[ord]/1e+06, las = 1, ylab = "Millions of read
         col = c("cyan", "orange")[coadse.paired$type] )
 legend("topleft", c("Normal", "Tumor"), fill = c("cyan", "orange"), inset = 0.01)
 ```
+
 In the plot we observe two main aspects that are worth paying attention to.
-First, we observe that surprisingly all the tumor samples present a lower sequencing depth than the
-normal samples. Even though we could not find any reliable explaination for this behaviour so far in our
-research, we considered this event dispensable at this time as the sequencing depth will be taken into 
-consideration during the normalization steps.
-One other important aspect is that we observe that some sample present considerable differences in the sequencing depth
-and specifically we can distinguish a couple of samples on the left of the graph that present 
-considerably low sequencing depths: this may generate problems in further analysis of the data. 
+First, we observe that surprisingly all the tumor samples present a lower sequencing depth than the normal samples. Even though we could not find any reliable explaination for this behaviour so far in our research, we considered this event dispensable at this time as the sequencing depth will be taken into consideration during the normalization steps.
+One other important aspect is that we observe that some sample present considerable differences in the sequencing depth and specifically we can distinguish a couple of samples on the left of the graph that present  considerably low sequencing depths: this may generate problems in further analysis of the data. 
 For this reason we identify these samples by looking at the at the sample depth as shown below. 
 ```{r}
 sampledepth <- round(dge.paired$sample$lib.size / 1e6, digits=1)
@@ -195,25 +173,6 @@ barplot(dge.paired$sample$lib.size[ord]/1e+06, las = 1, ylab = "Millions of read
         col = c("cyan", "orange")[coadse.paired$type] )
 legend("topleft", c("Normal", "Tumor"), fill = c("cyan", "orange"), inset = 0.01)
 ```
-## Sequencing depth among tumor samples
-```{r}
-genes.tumor <- data.frame(chr = as.character(seqnames(rowRanges(coadse.tumor))), symbol = rowData(coadse.tumor)[,
-1], stringsAsFactors = FALSE)
-dge.tumor <- DGEList(counts = assays(coadse.tumor)$counts, genes = genes.tumor, group = coadse.tumor$ajcc_pathologic_tumor_stage,)
-dge.tumor
-
-```
-```{r libsizes, echo=FALSE, out.width="600px", fig.cap="Library sizes in increasing order."}
-sampledepth2 <- round(dge.tumor$sample$lib.size / 1e6, digits=1)
-names(sampledepth2) <- substr(colnames(coadse.tumor), 6, 12)
-sort(sampledepth2)
-par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
-ord2 <- order(dge.tumor$sample$lib.size)
-
-ggplot(as.data.frame(dge.tumor$samples), aes(x = row.names(dge.tumor$samples), y = dge.tumor$samples$lib.size[ord2]/1000000, fill = dge.tumor$samples$group[ord2])) + geom_bar(stat = "identity") + theme_bw() + theme(legend.title = element_blank(), axis.text.x=element_blank()) + ylab("Milions of reads") + xlab("Samples")
-
-```
-
 
 ## Gender among samples
 
@@ -226,16 +185,7 @@ barplot(dge.paired$sample$lib.size[ord]/1e+06, las = 1, ylab = "Millions of read
         col = c("cyan", "orange")[coadse.paired$gender[ord]] )
 legend("topleft", c("Female", "Male"), fill = c("cyan", "orange"), inset = 0.01)
 ```
-In the figure we can see that not only we have a similar number of female and male samples, but that 
-their sequencing depth is quite well equilibrated as we cannot clearly identify any defined clustering event.
-
-## Gender among samples in tumor data
-```{r}
-ord2 <- order(dge.tumor$sample$lib.size)
-barplot(dge.tumor$sample$lib.size[ord2]/1e+06, las = 1, ylab = "Millions of reads", xlab = "Samples",
-        col = c("cyan", "orange")[coadse.tumor$gender[ord2]], border = NA)
-legend("topleft", c("Female", "Male"), fill = c("cyan", "orange"), inset = 0.01)
-```
+In the figure we can see that not only we have a similar number of female and male samples, but that their sequencing depth is quite well equilibrated as we cannot clearly identify any defined clustering event.
 
 ## Distribution of expression levels among samples
 
@@ -254,38 +204,8 @@ par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
 multidensity(as.list(as.data.frame(assays(coadse.paired)$logCPM)), xlab = "log2 CPM", legend = NULL,
              main = "All samples", cex.axis = 1.2, cex.lab = 1.5, las = 1)
 ```
-In order to provide a clearer visualization, we decided to devide the dataset into two smaller subsets, specifically 
-tumor samples and normal sample. Figure \@ref(fig:distRawExpComp) shows the expression levels in terms of logCPM for tumors
-and control samples separately.
-```{r disrRawExpComp, echo=FALSE, fig.height=4, fig.width=10, out.width="800px", fig.cap="Non-parametric density distribution of expression profiles per sample.", message=FALSE}
-tumor_mask <- coadse.paired$type == "tumor"
-non_tumor_mask <- coadse.paired$type == "normal"
-coadse_tumor <- coadse.paired[,tumor_mask]
-coadse_control <- coadse.paired[,non_tumor_mask]
-# plot divided by tumor and control for a better overview
-par(mfrow = c(1, 2), mar = c(4, 5, 1, 1))
-multidensity(as.list(as.data.frame(assays(coadse_tumor)$logCPM)), xlab = "log2 CPM", legend = NULL,
-           main = "Tumor samples", cex.axis = 1.2, cex.lab = 1.5, las = 1)
-multidensity(as.list(as.data.frame(assays(coadse_control)$logCPM)), xlab = "log2 CPM", legend = NULL,
-             main = "Control samples", cex.axis = 1.2, cex.lab = 1.5, las = 1)
-```
 
-As we do not observe extreme differences in the distribution of the expression values we decide to not exclude any sample
-from the dataset in this step and to proceed with furthe analyses with the current dataset.
-
-## Distribution of expression levels among samples in tumor data
-
-```{r}
-CPM2 <- t(t(dge.tumor$counts)/(dge.tumor$samples$lib.size/1e+06))
-assays(coadse.tumor)$logCPM <- cpm(dge.tumor, log = TRUE, prior.count = 0.25)
-```
-
-```{r disrRawExpAll, echo=FALSE, fig.height=4, fig.width=10, out.width="800px", fig.cap="Non-parametric density distribution of expression profiles per sample.", message=FALSE}
-library(geneplotter)
-par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
-multidensity(as.list(as.data.frame(assays(coadse_tumor)$logCPM)), xlab = "log2 CPM", legend = NULL,
-             main = "All samples", cex.axis = 1.2, cex.lab = 1.5, las = 1)
-```
+In order to provide a clearer visualization, we decided to divide the dataset into two smaller subsets, specifically tumor samples and normal sample. Figure \@ref(fig:distRawExpComp) shows the expression levels in terms of logCPM for tumors and control samples separately.
 
 ```{r disrRawExpComp, echo=FALSE, fig.height=4, fig.width=10, out.width="800px", fig.cap="Non-parametric density distribution of expression profiles per sample.", message=FALSE}
 tumor_mask <- coadse.paired$type == "tumor"
@@ -314,26 +234,6 @@ hist(avgexp, xlab = expression(log[2] * "CPM"), main = "", las = 1, col = "gray"
 abline(v = 0, col = "red", lwd = 2)
 ```
 
-
-## Distribution of expression levels among genes in tumor data
-```{r}
-coadse.tumor <- coadse.tumor[, dge.tumor$samples$lib.size >= 26*1e06]
-dge.tumor2 <- DGEList(counts = assays(coadse.tumor)$counts, group = coadse.tumor$ajcc_pathologic_tumor_stage, genes = genes.tumor)
-assays(coadse.tumor)$logCPM <- cpm(dge.tumor2, log = TRUE, prior.count = 0.25)
-coadse.tumor
-```
-
-```{r}
-par(mfrow = c(1, 2), mar = c(4, 5, 1, 1))
-multidensity(as.list(as.data.frame(assays(coadse.tumor)$counts/1e6)), xlab = "CPM", legend = NULL, main = "", cex.axis = 1.2, cex.lab = 1.5, las = 1)
-multidensity(as.list(as.data.frame(assays(coadse.tumor)$logCPM)), xlab = "log2 CPM", legend = NULL, main = "", cex.axis = 1.2, cex.lab = 1.5, las = 1)
-
-par(mfrow=c(2, 2))
-multidensity(as.list(as.data.frame(assays(coadse.tumor[, coadse.tumor$ajcc_pathologic_tumor_stage == "Stage I"])$logCPM)), xlab="log 2 CPM", legend=NULL, main="Stage I", las=1)
-multidensity(as.list(as.data.frame(assays(coadse.tumor[, coadse.tumor$ajcc_pathologic_tumor_stage == "Stage II"])$logCPM)), xlab="log 2 CPM", legend=NULL, main="Stage II", las=1)
-multidensity(as.list(as.data.frame(assays(coadse.tumor[, coadse.tumor$ajcc_pathologic_tumor_stage == "Stage III"])$logCPM)), xlab="log 2 CPM", legend=NULL, main="Stage III", las=1)
-multidensity(as.list(as.data.frame(assays(coadse.tumor[, coadse.tumor$ajcc_pathologic_tumor_stage == "Stage IV"])$logCPM)), xlab="log 2 CPM", legend=NULL, main="Stage IV", las=1)
-```
 ## Filtering of lowly-expressed genes
 
 From this distribution of  \@ref(fig:exprdist) we could already visually identify a cutoff to define the too lowly expressed genes.
