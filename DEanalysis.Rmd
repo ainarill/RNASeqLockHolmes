@@ -19,6 +19,7 @@ library(edgeR)
 library(geneplotter)
 library(sva)
 library(limma)
+library(calibrate)
 
 opts_chunk$set(cache=TRUE,
                cache.path="cache/file2",
@@ -117,6 +118,14 @@ sort(table(tt$chr[tt$adj.P.Val < FDRcutoff]), decreasing = TRUE)
 One interesting aspect we would like to systematically assess would be the accuracy of the model with different adjusting factors and when using different algorithms when adjusting for the mean variance relationship. 
 For doing this, we would need to use a dataset of genes which are known to be differentially expressed between patients with colon cancer and  control indiviudals with no colon cancer.
 At the moment, we could not find a suitable dataset for this task but in the future, to expand the analysis, it would be interesting to investigate this aspect further.
+
+
+## Vulcano plot 
+
+```{r}
+with(tt, plot(tt$logFC, -log10(tt$adj.P.Val), pch=20, main="Volcano plot", xlab ="Log fold change", ylab="-log10(Adjusted P-Value)"))
+with(subset(tt, -log10(tt$adj.P.Val) > 16  & abs(tt$logFC)>5), textxy(tt$logFC, -log10(tt$P.Value), labs=symbol, cex=.8))
+```
 ## Session information
 
 ```{r, message=FALSE}
