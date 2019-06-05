@@ -267,28 +267,11 @@ in case we later need to work on it again.
 saveRDS(coadse.filt, file.path("results", "coadse.filt.unnorm.rds"))
 saveRDS(dge.filt, file.path("results", "dge.filt.unnorm.rds"))
 ```
-## Filtering of lowly-expressed genes in tumor data
 
-AINA NOT SAME NUMBERS LOOK AGAIN AFTER.
-
-```{r}
-maskgenes.tumor <- avgexp > 1
-dim(coadse.tumor)
-## [1] 20115   222
-coadse.tumor <- coadse.tumor[mask, ]
-dim(coadse.tumor)
-## [1] 11374   222
-dim(dge.tumor2)
-## [1] 20115   222
-dge.tumor2 <- dge.tumor2[mask, ]
-dim(dge.tumor2)
-```
 ## Normalization
 
-Since different samples may have different RNA compositions and this could be problematic for further analyses
-we need to take it into account and normalize the data.
-We estimate a normalization factor for each library using the Trimmed Mean of M-Values and apply it
-to our data.
+Since different samples may have different RNA compositions and this could be problematic for further analyses we need to take it into account and normalize the data.
+We estimate a normalization factor for each library using the Trimmed Mean of M-Values and apply it to our data.
 
 ```{r}
 dge.filt <- calcNormFactors(dge.filt) 
@@ -302,17 +285,6 @@ saveRDS(coadse.filt, file.path("results", "coadse.filt.rds"))
 saveRDS(dge.filt, file.path("results", "dge.filt.rds"))
 ```
 
-## Normalization tumor data
-
-```{r}
-dge.tumor.filt <- calcNormFactors(dge.tumor2) 
-assays(coadse.tumor)$logCPM <- cpm(dge.tumor.filt, log=TRUE, normalized.lib.sizes=TRUE, prior.count=0.25)
-```
-
-```{r}
-saveRDS(coadse.tumor, file.path("results", "coadse.tumor.rds"))
-saveRDS(dge.tumor.filt, file.path("results", "dge.tumor.filt.rds"))
-```
 
 ## MA-plots
 
@@ -355,61 +327,13 @@ for (i in 1:ncol(setmp)) {
 As we do not see any important expression levels biases in any of the tumor and normal samples we decide to proceed to the 
 next step of the analysis without modifying the dataset we work with.
 
-## MA plots tumor data
 
-For Stage I --> 
-```{r maPlotsTumor, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage I."}
-Stage1 <- coadse.tumor[, coadse.tumor$ajcc_pathologic_tumor_stage == "Stage I"]
-par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
-for (i in 1:ncol(Stage1)) {
-A <- rowMeans(assays(Stage1)$logCPM) 
-M <- assays(Stage1)$logCPM[, i] - A
-smoothScatter(A, M, main=colnames(Stage1)[i], las=1, cex.axis=1, cex.lab=1.2, cex.main=1)
-abline(h=0, col="blue", lwd=2) ; lo <- lowess(M ~ A) ; lines(lo$x, lo$y, col="red", lwd=2)
-}
-```
-
-For Stage II --> 
-```{r maPlotsTumor, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage I."}
-Stage2 <- coadse.tumor[, coadse.tumor$ajcc_pathologic_tumor_stage == "Stage II"]
-par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
-for (i in 1:ncol(Stage2)) {
-A <- rowMeans(assays(Stage2)$logCPM) 
-M <- assays(Stage2)$logCPM[, i] - A
-smoothScatter(A, M, main=colnames(Stage2)[i], las=1, cex.axis=1, cex.lab=1.2, cex.main=1)
-abline(h=0, col="blue", lwd=2) ; lo <- lowess(M ~ A) ; lines(lo$x, lo$y, col="red", lwd=2)
-}
-```
-
-For Stage III --> 
-```{r maPlotsTumor, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage I."}
-Stage3 <- coadse.tumor[, coadse.tumor$ajcc_pathologic_tumor_stage == "Stage III"]
-par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
-for (i in 1:ncol(Stage3)) {
-A <- rowMeans(assays(Stage3)$logCPM) 
-M <- assays(Stage3)$logCPM[, i] - A
-smoothScatter(A, M, main=colnames(Stage3)[i], las=1, cex.axis=1, cex.lab=1.2, cex.main=1)
-abline(h=0, col="blue", lwd=2) ; lo <- lowess(M ~ A) ; lines(lo$x, lo$y, col="red", lwd=2)
-}
-```
-
-For Stage IV --> 
-```{r maPlotsTumor, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage I."}
-Stage4 <- coadse.tumor[, coadse.tumor$ajcc_pathologic_tumor_stage == "Stage IV"]
-par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
-for (i in 1:ncol(Stage4)) {
-A <- rowMeans(assays(Stage4)$logCPM) 
-M <- assays(Stage4)$logCPM[, i] - A
-smoothScatter(A, M, main=colnames(Stage4)[i], las=1, cex.axis=1, cex.lab=1.2, cex.main=1)
-abline(h=0, col="blue", lwd=2) ; lo <- lowess(M ~ A) ; lines(lo$x, lo$y, col="red", lwd=2)
-}
-```
 ## Batch identification
 
 The next step will be the search for potential surrogate of batch effect indicators. Batch effect include sub-groups of measurements that have qualitatively different behaviour across conditions and are unrelated to the biological variables in the study.
 As normalization of the data can not always remove completely the batch effect, we are going to identify this effect, adjust it and eventually correct it.
 
-Given that each sample names corresponds to a [TCGA barcode](https://docs.gdc.cancer.gov/Encyclopedia/pages/TCGA_Barcode/), following the strategy described in http://bioinformatics.mdanderson.org/main/TCGABatchEffects:Overview we are going to derive different elements of the TCGA barcode and examine their distribution across samples.
+Given that each sample names corresponds to a [TCGA barcode] (https://docs.gdc.cancer.gov/Encyclopedia/pages/TCGA_Barcode/), following the strategy described in http://bioinformatics.mdanderson.org/main/TCGABatchEffects:Overview we are going to derive different elements of the TCGA barcode and examine their distribution across samples.
 
 ```{r}
 tss <- substr(colnames(dge.filt), 6, 7)
@@ -490,23 +414,7 @@ legend("bottomleft", paste("Batch", sort(unique(batch)), levels(factor(tss))),
        fill=sort(unique(batch)), inset=0.05)
 ```
 
-## Batch Identification for tumor data.
-```{r}
-tss.tumor <- substr(colnames(dge.tumor.filt), 6, 7)
-table(tss.tumor)
-center.tumor <- substr(colnames(dge.tumor.filt), 27, 28)
-table(center.tumor)
-samplevial.tumor <- substr(colnames(dge.tumor.filt), 14, 16)
-table(samplevial.tumor)
-portionanalyte.tumor <- substr(colnames(dge.tumor.filt), 18, 20)
-table(portionanalyte.tumor)
-plate.tumor <- substr(colnames(dge.tumor.filt), 22, 25)
-table(plate.tumor)
 
-```
-
-OKEY MIRANDO LOS PLOTS DE ESTA GENTE CREO QUE NO HAY BATCH EN NINGUNA COSA, NO ME HA DADO TIEMPO A HACERLO. LUEGO LO DISCUTIMOS A VER QUE CREEIS QUE DEBERIAMOS PONER EN ESTA PARTE.
-BESIS
 
 
 ## Session information

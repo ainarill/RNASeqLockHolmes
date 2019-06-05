@@ -250,110 +250,35 @@ smoothScatter(A, M, main=colnames(Stage4)[i], las=1, cex.axis=1, cex.lab=1.2, ce
 abline(h=0, col="blue", lwd=2) ; lo <- lowess(M ~ A) ; lines(lo$x, lo$y, col="red", lwd=2)
 }
 ```
-## Batch identification
-
-The next step will be the search for potential surrogate of batch effect indicators. Batch effect include sub-groups of measurements that have qualitatively different behaviour across conditions and are unrelated to the biological variables in the study.
-As normalization of the data can not always remove completely the batch effect, we are going to identify this effect, adjust it and eventually correct it.
-
-Given that each sample names corresponds to a [TCGA barcode](https://docs.gdc.cancer.gov/Encyclopedia/pages/TCGA_Barcode/), following the strategy described in http://bioinformatics.mdanderson.org/main/TCGABatchEffects:Overview we are going to derive different elements of the TCGA barcode and examine their distribution across samples.
-
-```{r}
-tss <- substr(colnames(dge.filt), 6, 7)
-table(tss)
-center <- substr(colnames(dge.filt), 27, 28)
-table(center)
-samplevial <- substr(colnames(dge.filt), 14, 16)
-table(samplevial)
-portionanalyte <- substr(colnames(dge.filt), 18, 20)
-table(portionanalyte)
-plate <- substr(colnames(dge.filt), 22, 25)
-table(plate)
-
-```
-
-From this information we can make the following observations:
-
-  * *TSS*: Samples were collected across 4 different tissue source sites (TSS), with poor representation of one of them (F4).
-  
-  * *Sample Vial*: 44 samples belong to solid tumor samples(**01 code**) whereas 39 do not (**11 code**). The 44 solid tumor samples where distributed in 3 different vials (A, B, C) whereas the 39 non tumor samples where put in the same vial (A). 
-  
-  * *Portions & Analyte*: samples where distributed in different portions and analytes combinations. 
-  
-  * *Plates*: Samples were sequenced in different plates.
-  
-  * *Center*: All samples were sequenced at the same center.
-
-  * The analyte code of all samples is a `R` (RNA samples), as expected.
-  
-
-We are going to use the TSS as surrogate of batch effect indicator. Considering our outcome
-of interest as molecular changes between sample types, tumor vs. normal, we will examine now
-the cross-classification of this outcome with TSS.
-
-```{r}
-table(data.frame(TYPE=coadse.filt$type, TSS=tss))
-```
-
-We can observe that both normal and tumor tissues are well represented in all the TSS
-groups, although the in the `F4` group there are a few number of samples, as said before.
-Therefore, we can proceed to check if TSS is a source of expression variability.
-
-We examine now how samples group together by hierarchical clustering and multidimensional
-scaling, annotating the outcome of interest and the the surrogate of batch indicator. We
-calculate again log CPM values with a higher prior count to moderate extreme fold-changes
-produced by low counts. The resulting dendrogram is shown in Figure \@ref(fig:sampleClustering).
-
-```{r sampleClustering, fig.height=7, fig.width=14, dpi=100, echo=TRUE, fig.cap="Figure S6: Hierarchical clustering of the samples."}
-logCPM <- cpm(dge.paired, log=TRUE, prior.count=3)
-d <- as.dist(1-cor(logCPM, method="spearman"))
-sampleClustering <- hclust(d)
-batch <- as.integer(factor(tss))
-sampleDendrogram <- as.dendrogram(sampleClustering, hang=0.1)
-names(batch) <- colnames(coadse.filt)
-outcome <- paste(substr(colnames(coadse.filt), 9, 12), as.character(coadse.filt$type), sep="-")
-names(outcome) <- colnames(coadse.filt)
-sampleDendrogram <- dendrapply(sampleDendrogram,
-                               function(x, batch, labels) {
-                                 if (is.leaf(x)) {
-                                   attr(x, "nodePar") <- list(lab.col=as.vector(batch[attr(x, "label")]))
-                                   attr(x, "label") <- as.vector(labels[attr(x, "label")])
-                                 }
-                                 x
-                               }, batch, outcome)
-plot(sampleDendrogram, main="Hierarchical clustering of samples")
-legend("topright", paste("Batch", sort(unique(batch)), levels(factor(tss))), fill=sort(unique(batch)))
-```
-
-We can observe that samples cluster primarily by sample type, tumor or normal. TSS seems to have
-a stronger effect among the normal samples, while it distributes better among the tumor samples.
-We may consider discarding samples leading to an unbalanced distribution of the outcome across batches.
-
-In Figure \@ref(fig:mdsPlot) we show the corresponding MDS plot. Here we see more clearly that the first source of variation separates tumor from normal samples. We can also observe that two tumor samples, corresponding to individuals `A6-5665`, `A6-2884`, `A6-2569` and`A6-2684` are separated from the rest, just as it happens in the hierchical clustering. A closer examination of their corresponding MA-plots also reveals a slight dependence of expression changes on average expression. We may consider discarding these four samples and doing the MDS plot again to have a closer look to the differences among the rest of the samples and their relationship with TSS.
-
-```{r mdsPlot, fig.height=7, fig.width=14, dpi=100, echo=TRUE, fig.cap="Figure S7: Multidimensional scaling plot of the samples."}
-plotMDS(dge.paired, labels=outcome, col=batch)
-legend("bottomleft", paste("Batch", sort(unique(batch)), levels(factor(tss))),
-       fill=sort(unique(batch)), inset=0.05)
-```
 
 ## Batch Identification for tumor data.
+
+As normalization of the data can not always remove completely the batch effect, the next step will be indeed the search of potential surrogate of batch effect indicators derived from different elements of the TCGA barcode of each sample.
+
 ```{r}
 tss.tumor <- substr(colnames(dge.tumor.filt), 6, 7)
-table(tss.tumor)
+table(data.frame(STAGE=coadse.tumor.filt$ajcc_pathologic_tumor_stage, TSS=tss.tumor))
 center.tumor <- substr(colnames(dge.tumor.filt), 27, 28)
-table(center.tumor)
+table(data.frame(STAGE=coadse.tumor.filt$ajcc_pathologic_tumor_stage, CENTER=center.tumor))
 samplevial.tumor <- substr(colnames(dge.tumor.filt), 14, 16)
-table(samplevial.tumor)
+table(data.frame(STAGE=coadse.tumor.filt$ajcc_pathologic_tumor_stage, SAMPLEVIAL=samplevial.tumor))
 portionanalyte.tumor <- substr(colnames(dge.tumor.filt), 18, 20)
-table(portionanalyte.tumor)
+table(data.frame(STAGE=coadse.tumor.filt$ajcc_pathologic_tumor_stage, PORTIONANALYTE=portionanalyte.tumor))
 plate.tumor <- substr(colnames(dge.tumor.filt), 22, 25)
-table(plate.tumor)
-
+table(data.frame(STAGE=coadse.tumor.filt$ajcc_pathologic_tumor_stage, PLATE=plate.tumor))
 ```
 
-OKEY MIRANDO LOS PLOTS DE ESTA GENTE CREO QUE NO HAY BATCH EN NINGUNA COSA, NO ME HA DADO TIEMPO A HACERLO. LUEGO LO DISCUTIMOS A VER QUE CREEIS QUE DEBERIAMOS PONER EN ESTA PARTE.
-BESIS
+ROBERT DICE QUE SE TIENE QUE HACER UN MDS PLOT, PERO LO HE ESTADO BUSCANDO Y NO SE QUÉ REPRESENTARIA CADA EJE (COMMAND: cmdscale)
 
+```{r}
+par(mfrow=c(1,2))
+col.stage <- c("blue","cyan", "orange", "purple")[factor(coadse.tumor.filt$ajcc_pathologic_tumor_stage)]
+head(data.frame(coadse.tumor.filt$ajcc_pathologic_tumor_stage, col.stage))
+batch <- as.integer(factor(tss.tumor))
+plotMDS(dge.tumor.filt, dim=c(3,4), col=col.stage, pch= batch,cex=2)
+legend("topright", legend=levels(factor(coadse.tumor.filt$ajcc_pathologic_tumor_stage)), col=col.stage ,pch=16, cex= 0.75)
+legend("bottomright", legend=levels(factor(tss.tumor)),pch=c(1,4), cex=0.75)
+```
 
 ## Session information
 
