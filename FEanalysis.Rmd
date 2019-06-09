@@ -33,26 +33,17 @@ se.filt.unnorm <- readRDS(file.path("results", "coadse.filt.unnorm.rds"))
 dge.filt.unnorm <- readRDS(file.path("results", "dge.filt.unnorm.rds"))
 se.filt <- readRDS(file.path("results", "coadse.filt.rds"))
 dge.filt <- readRDS(file.path("results", "dge.filt.rds"))
-
-
 ```
-
-# Functional Enrichment
-
-
-LUISA COMMENTS: if we dont filter for large size, we observe genesets involved in odor perception -- proven its true. 
-
- - some very important genes in term of DE --> We can look up what they are involved in 
+NOTES : 
  - We could filter out every gene which has no functional annoation
  - We could select an important type of genes and see how many important genes fall into that category
- 
+
+# Functional Enrichment
 We perform a functional enrichment analysis on the entire collection of GO gene sets.
-We are computing the significance of a GO term conditional on the significance of its children.
+First we select all the genes from our paired dataset to define the gene universe. Then, we create the parameter object which contains  information about gene universe, DEgenes and the annotation package to use.
+By setting the conditional(params) to true, we are computing the significance of a GO term conditional on the significance of its children. Then, we properly run the functional enrichment and we store and visualize the results in a html format.
 ```{r}
-DEgenes <- rownames(tt)[tt$adj.P.Val < 0.1]
-length(DEgenes)
-geneUniverse <- rownames(lclse.filt)
-# BIG AIM: perform functional enrichment analysis on the entire collection of GO gene sets 
+geneUniverse <- rownames(coadse.filt)
 # Build a parameter object : information about gene universe, DEgenes and the annotation package to use.
 params <- new("GOHyperGParams", geneIds=DEgenes, universeGeneIds=geneUniverse,annotation="org.Hs.eg.db", ontology="BP", pvalueCutoff=0.05, testDirection="over")
 conditional(params) <- TRUE
@@ -65,39 +56,37 @@ browseURL("gotests.html")
 # store the results in a dataframe
 goresults <- summary(hgOver)
 ```
- 
-We then explore some of the results.
+We then have a look some of the results with the sake of having an overview of the data.
 ```{r}
 # exploring
 head(summary(hgOver))
+```
+```{r}
 head(geneCounts(hgOver))
+```
+```{r}
 head(universeCounts(hgOver))
+```
+```{r}
 head(pvalues(hgOver))
 ```
-In general, genest which are either very small or that present a small number of DE genes are not really reliable. On the other hand, if the geneset is too big, its enrichment might provide little insights. In order to correct for this we filter out the goresults.  
+Geneset which are either very small or that present a small number of DE genes are not really reliable. On the other hand, if the geneset is too big, its enrichment might provide little insights. In order to correct for this we filter out the goresults and only select the genesets which are neither too big nor too small.  
 ```{r}
 goresults <- goresults[goresults$Size >= 3 & goresults$Size <= 300 & goresults$Count >= 3, ] 
 goresults <- goresults[order(goresults$OddsRatio, decreasing=TRUE), ]
 head(goresults)
 ```
-Let's extract the genes that enrich each GO term 
+We now want to specifically know which are the genes that enrich each GO term. This is achieved in the next snippet and summarized in the produced html file.
 ```{r}
 geneIDs <- geneIdsByCategory(hgOver)[goresults$GOBPID]
-geneSYMs <- sapply(geneIDs, function(id) AnnotationDbi::select(org.Hs.eg.db, columns = "SYMBOL", key = id, keytype = "ENTREZID")$SYMBOL)
+geneSYMs <- sapply(geneIDs, function(id) AnnotationDbi::select(org.Hs.eg.db, columns = "SYMBOL", key = id, keytype ="ENTREZID")$SYMBOL)
 geneSYMs <- sapply(geneSYMs, paste, collapse = ", ") 
 goresults <- cbind(goresults, Genes = geneSYMs) 
 rownames(goresults) <- 1:nrow(goresults)
 xtab <- xtable(goresults, align = "l|c|r|r|r|r|r|p{3cm}|p{3cm}|") 
 print(xtab, file = "goresults.html", type = "html")
+browseURL("goresults.html")
 ```
-
-
-
-
-
-
-
-
 
 
 # GSEA
@@ -112,7 +101,7 @@ data(c2BroadSets)
 c2BroadSets <- c2BroadSets[c(grep("^KEGG", names(c2BroadSets)))]
 #c2BroadSets <- c2BroadSets[c(grep("^KEGG", names(c2BroadSets)),grep("^REACTOME", names(c2BroadSets)), grep("^BIOCARTA", names(c2BroadSets)))]
 gsc <- GeneSetCollection(c2BroadSets)
-gsc <- mapIdentifiers(gsc, AnnoOrEntrezIdentifier(metadata(lclse.filt)$annotation))
+gsc <- mapIdentifiers(gsc, AnnoOrEntrezIdentifier(metadata(coadse.filt)$annotation))
 # remove genes which are not annotated to nay geneset
 Im <- incidence(gsc)
 Im <- Im[, colnames(Im) %in% rownames(coadse.filt)]
