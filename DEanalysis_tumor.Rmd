@@ -34,66 +34,66 @@ dge.tumor.filt <- readRDS(file.path("results", "dge.tumor.filt.rds"))
 
 ```
 
-```{r}
-table(coadse.tumor.filt$type)
-```
-We start from the filtered samples where there are only tumor samples.
-```{r}
-table(coadse.tumor.filt$gender)
-```
-Within these tumor samples we have 101 females and 121 males.
-```{r}
-table(coadse.tumor.filt$ajcc_pathologic_tumor_stage)
-```
-We want to focus on the differential expressed genes between tumor stages. 
+# Differential expression between tumor stages
 
-# Differential expression
+Once we have normalized the data from the 4th tumor stages, we are interested in identifying gene expression changes and associated p-values between those tumor stages. For this task, we used the R/Bioconductor packages [sva](http://bioconductor.org/packages/sva) and [limma](https://bioconductor.org/packages/release/bioc/html/limma.html).
 
-After the data filtering and normalization, we are interested in identifying gene expression changes and associated p-values between tumor and control samples. For this task, we used the R/Bioconductor packages [sva](http://bioconductor.org/packages/sva) and [limma](https://bioconductor.org/packages/release/bioc/html/limma.html).
-
-In the follwing step we create the design matrix. Now we want to analyse wether there are differential expressed genes between males and females. The first step is to create the design matrix `mod0`. 
+# Model 1 (SIGUIENDO PIPELINE DE_GENES_II)
+In the follwing step we create the design matrix. The outcome of interest will be the different stages, so the first step is to build the design matrix. 
 ```{r}
 mod <- model.matrix(~ajcc_pathologic_tumor_stage , colData(coadse.tumor.filt))
 head(coadse.tumor.filt$gender)
 head(mod, n=5)
 ```
+Next, we want to adjust for the mean-variance realtionship. We proceed with the voom() function, since as we can observe in the Figure \@ref(fig:libsize), there are big differences in sample sizes among the samples. 
+```{r libsize}
+barplot(sort(dge.tumor.filt$samples$lib.size)/1e+06, xlab = "Samples", ylab = "Library sizes (Millions)")
+```
+
 So, we calculate the weights that estimate the mean-variance realtionship at gene-by-sample level with the voom() function and we will use these weights to fit the model. 
 ```{r}
 v <- voom(dge.tumor.filt, mod, plot=TRUE)
 ```
-Next, we fit the model. 
+
+Next, we fit the model with the `lmFit` method.
 ```{r}
 fit<- lmFit(v,mod)
 ```
-We then calculate the moderated t-statistics.
+We then calculate the moderated t-statistics with `eBayes`.
 ```{r}
 fit <- eBayes(fit)
-FDRcutoff <- 0.1
+FDRcutoff <- 0.01
 ```
 
 Here, we examine the differential expression analysis result of this part at a `r FDRcutoff` to have a broad overview.
 ```{r}
 #Classify a series of related t-statistics as up, down or not significant. 
-res <- decideTests(fit, p.value = FDRcutoff) 
-summary(res)
+res1 <- decideTests(fit, p.value = 0.01) 
+summary(res1)
 ```
+With an FDR cutoff of 0.01 we can notice that there are not up or down results for the different stages. 
+AQUÍ PODEMOS VER QUE NO HAY RESULTADOS SIGNIFICATIVOS PARA EL T-TEST, PARA UN CUTOFF DEL 0.01. NO OBSTANTE, SÍ PARA 0.05.
+```{r}
+#Classify a series of related t-statistics as up, down or not significant. 
+res2 <- decideTests(fit, p.value = 0.05) 
+summary(res2)
+```
+SEGUIMOS CON FDR < 0.05!
+
 We extract the genes chromosome to look at the distribution of the differential expressed genes among the chromosomes, again for the purpose of getting an overview of the data we will be working with.
 ```{r}
 genesmd <- data.frame(chr = as.character(sub("\\_.*", "", seqnames(rowRanges(coadse.tumor.filt)))), symbol = rowData(coadse.tumor.filt)[, 1], stringsAsFactors = FALSE)
 #Extract a table of the top-ranked genes from a linear model fit.
 tt <- topTable(fit, coef = 2, n = Inf)
 fit$genes <- genesmd
-head(tt)
-#sort(table(tt$chr[tt$P.Value < FDRcutoff]), decreasing = TRUE) # adj.P.val is higher than p value
+#head(tt)
+sort(table(tt$chr[tt$adj.P.Value < FDRcutoff]), decreasing = TRUE) # adj.P.val is higher than p value
 ```
+TAMPOCO ENCUENTRA RESULTADOS SIGNIFICATIVOS.
 
 ```{r}
-sort(table(tt$chr[tt$P.Val < FDRcutoff]), decreasing = TRUE)
-```
-
-```{r}
-DEgenes <- rownames(tt)[tt$P.Val < FDRcutoff]
-length(DEgenes)
+#DEgenes <- rownames(tt)[tt$P.Val < FDRcutoff]
+#length(DEgenes)
 ```
 
 ```{r}
@@ -112,11 +112,11 @@ EnhancedVolcano(tt,
 ##------------------------------------------
 # Differential expression - model 2
 
-In the follwing step we create the design matrix. Now we want to analyse wether there are differential expressed genes between males and females. The first step is to create the design matrix `mod`. 
+LO PRUEBO CONSTRUYENDO UNA m0:
 
 ```{r}
 mod2 <- model.matrix(~ajcc_pathologic_tumor_stage, colData(coadse.tumor.filt))
-mod0 <- model.matrix(~1, colData(coadse.tumor.filt))
+mod0 <- model.matrix(~1, colData(coadse.tumor.filt)) # NINGÚN VALOR PARA AJUSTAR
 #Verify wether is full rank --> yes!
 is.fullrank(mod)
 pv <- f.pvalue(assays(coadse.tumor.filt)$logCPM, mod2, mod0)
@@ -172,6 +172,7 @@ Here, we examine the differential expression analysis result of this part at a `
 res2 <- decideTests(fit, p.value = FDRcutoff) 
 summary(res2)
 ```
+PASA LO MISMO QUE ANTES.
 We extract the genes chromosome to look at the distribution of the differential expressed genes among the chromosomes, again for the purpose of getting an overview of the data we will be working with.
 ```{r}
 genesmd2 <- data.frame(chr = as.character(sub("\\_.*", "", seqnames(rowRanges(coadse.tumor.filt)))), symbol = rowData(coadse.tumor.filt)[, 1], stringsAsFactors = FALSE)
@@ -182,18 +183,13 @@ head(tt2)
 fit2$genes <- genesmd2
 sort(table(tt2$chr[tt2$adj.P.Val < FDRcutoff]), decreasing = TRUE)
 ```
-NINGÚN GEN PASA EL FILTRO DE P VALUE ADJUSTED.
 
 
 ```{r}
-sort(table(tt$chr[tt$P.Val < FDRcutoff]), decreasing = TRUE)
-```
-
-```{r}
-DEgenes <- rownames(tt)[tt$P.Val < FDRcutoff]
+DEgenes <- rownames(tt2)[tt2$adj.P.Val < FDRcutoff]
 length(DEgenes)
 ```
-
+NINGÚN GEN PASA EL FILTRO DE P VALUE ADJUSTED!! 
 ```{r}
 EnhancedVolcano(tt,
     lab = tt$symbol,
