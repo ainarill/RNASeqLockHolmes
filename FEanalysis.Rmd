@@ -15,6 +15,10 @@ library(knitr)
 library(SummarizedExperiment)
 library(edgeR)
 library(geneplotter)
+library(GOstats)
+library(xtable)
+library(org.Hs.eg.db)
+library(GSVAdata) 
 
 opts_chunk$set(cache=TRUE,
                cache.path="cache/file2",
@@ -29,13 +33,131 @@ se.filt.unnorm <- readRDS(file.path("results", "coadse.filt.unnorm.rds"))
 dge.filt.unnorm <- readRDS(file.path("results", "dge.filt.unnorm.rds"))
 se.filt <- readRDS(file.path("results", "coadse.filt.rds"))
 dge.filt <- readRDS(file.path("results", "dge.filt.rds"))
+```
+NOTES : 
+ - We could filter out every gene which has no functional annotation
+ - We could select an important type of genes and see how many important genes fall into that category
 
+# Functional Enrichment
 
+We perform a functional enrichment analysis on the entire collection of GO gene sets.
+First we select all the genes from our paired dataset to define the gene universe. Then, we create the parameter object which contains information about gene universe, DEgenes and the annotation package to use.
+By setting the conditional(params) to true, we are computing the significance of a GO term conditional on the significance of its children. Then, we properly run the functional enrichment and we store and visualize the results in a html format.
+
+```{r}
+geneUniverse <- rownames(coadse.filt)
+# Build a parameter object : information about gene universe, DEgenes and the annotation package to use.
+params <- new("GOHyperGParams", geneIds=DEgenes, universeGeneIds=geneUniverse,annotation="org.Hs.eg.db", ontology="BP", pvalueCutoff=0.05, testDirection="over")
+conditional(params) <- TRUE
+# Run the functional enrichment analysis
+hgOver <- hyperGTest(params) 
+hgOver
+# Store and visualize  
+htmlReport(hgOver, file = "gotests.html")
+browseURL("gotests.html")
+# store the results in a dataframe
+goresults <- summary(hgOver)
+```
+We then have a look some of the results with the sake of having an overview of the data.
+```{r}
+# exploring
+head(summary(hgOver))
+```
+```{r}
+head(geneCounts(hgOver))
+```
+```{r}
+head(universeCounts(hgOver))
+```
+```{r}
+head(pvalues(hgOver))
+```
+Geneset which are either very small or that present a small number of DE genes are not really reliable. On the other hand, if the geneset is too big, its enrichment might provide little insights. In order to correct for this we filter out the goresults and only select the genesets which are neither too big nor too small.  
+```{r}
+goresults <- goresults[goresults$Size >= 3 & goresults$Size <= 300 & goresults$Count >= 3, ] 
+goresults <- goresults[order(goresults$OddsRatio, decreasing=TRUE), ]
+head(goresults)
+```
+We now want to specifically know which are the genes that enrich each GO term. This is achieved in the next snippet and summarized in the produced html file.
+```{r}
+geneIDs <- geneIdsByCategory(hgOver)[goresults$GOBPID]
+geneSYMs <- sapply(geneIDs, function(id) AnnotationDbi::select(org.Hs.eg.db, columns = "SYMBOL", key = id, keytype ="ENTREZID")$SYMBOL)
+geneSYMs <- sapply(geneSYMs, paste, collapse = ", ") 
+goresults <- cbind(goresults, Genes = geneSYMs) 
+rownames(goresults) <- 1:nrow(goresults)
+xtab <- xtable(goresults, align = "l|c|r|r|r|r|r|p{3cm}|p{3cm}|") 
+print(xtab, file = "goresults.html", type = "html")
+browseURL("goresults.html")
 ```
 
-# Functional analysis
 
-Here we do the functional analysis.
+# GSEA
+
+The magnitude of gene expression changes may be small and very few significant DE genes will be idenified after having adjusted for multiple testing. For this reason, we want to see if there are small but consistent changes occuring for a number of genes operating in a common pathway by assessing DE direclty at the geneset level starting from the expression data themselves.
+
+
+## preparation
+```{r}
+# collect gene sets
+data(c2BroadSets) 
+c2BroadSets <- c2BroadSets[c(grep("^KEGG", names(c2BroadSets)))]
+#c2BroadSets <- c2BroadSets[c(grep("^KEGG", names(c2BroadSets)),grep("^REACTOME", names(c2BroadSets)), grep("^BIOCARTA", names(c2BroadSets)))]
+gsc <- GeneSetCollection(c2BroadSets)
+gsc <- mapIdentifiers(gsc, AnnoOrEntrezIdentifier(metadata(coadse.filt)$annotation))
+# remove genes which are not annotated to nay geneset
+Im <- incidence(gsc)
+Im <- Im[, colnames(Im) %in% rownames(coadse.filt)]
+coadse.filt <- coadse.filt[colnames(Im), ] 
+dim(coadse.filt)
+dim(dge.filt)
+dge <- dge[colnames(Im), ] 
+dim(dge)
+```
+
+
+
+## Simple GSEA 
+
+In order to have a sizeable list of DE genes we are going to perform a Gene Set Enrichment Analysis to introduce a method for pathway analysis assessing DE directly at gene set level.
+
+
+```{r}
+# ehm ... not normal at all
+qq <- qqnorm(tt$t)
+abline(0, 1)
+chroutliers <- tt$chr[abs(tt$t) > 10]
+text(qq$x[abs(qq$y) > 10], qq$y[abs(qq$y) > 10], chroutliers, pos = 4)
+```
+
+```{r}
+Im <- Im[rowSums(Im) >= 5, ] 
+dim(Im)
+tGSgenes <- tt[match(colnames(Im), rownames(tt)), "t"]
+length(tGSgenes)
+zS <- sqrt(rowSums(Im)) * (as.vector(Im %*% tGSgenes)/rowSums(Im))
+length(zS)
+```
+
+```{r}
+qqnorm(zS)
+abline(0, 1)
+```
+```{r}
+rnkGS <- sort(abs(zS), decreasing = TRUE)
+pv <- pmin(pnorm(zS), 1 - pnorm(zS)) 
+sum(pv < 0.05)
+```
+
+
+```{r}
+pvadj <- p.adjust(pv, method = "fdr") 
+DEgs <- names(pvadj)[which(pvadj < 0.01)] 
+length(DEgs)
+head(DEgs, n = 3)
+```
+
+Overlap shoud be taken into account 
+
 
 ## Session information
 

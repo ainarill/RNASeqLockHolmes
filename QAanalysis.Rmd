@@ -224,8 +224,7 @@ multidensity(as.list(as.data.frame(assays(coadse_control)$logCPM)), xlab = "log2
 
 We are now interested in investigating if there is any gene which has very low expression
 values so that we can possibly want to exclude them from the dataset.
-In order to do so, we calculate the average expression of each gene for all the samples and plot
-their distribution in Figure \@ref(fig:exprdist).
+In order to do so, we calculate the average expression of each gene for all the samples and plot their distribution in Figure \@ref(fig:exprdist).
 
 ```{r exprdist, echo=FALSE, out.width="400px", fig.cap="Distribution of average expression level per gene."}
 avgexp <- rowMeans(assays(coadse.paired)$logCPM)
