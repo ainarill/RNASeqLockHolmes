@@ -131,7 +131,7 @@ length(DEgenes)
 ```
 The number of DE genes, the adjusted p-value of which is under the FDR threshold (0.01), is `r length(DEgenes)`.
 
-## Vulcano plot 
+## Volcano plot 
 
 Lastly, we want to visualize the DE genes in a Volcano plot. We set two different thresholds: the log fold change threshold and the adjusted p-value threshold.
 
