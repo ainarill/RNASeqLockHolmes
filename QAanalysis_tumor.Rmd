@@ -308,8 +308,10 @@ col.stage <- c("blue","cyan", "orange", "purple")[factor(coadse.tumor.filt$ajcc_
 batch <- as.integer(factor(plate.tumor))
 plotMDS(dge.tumor.filt, dim=c(3,4), col=col.stage, pch= batch, cex=2)
 legend("topleft", legend=levels(factor(coadse.tumor.filt$ajcc_pathologic_tumor_stage)), col=col.stage ,pch=16, cex= 0.75)
-legend("bottomright", legend=levels(factor(plate.tumor)),pch= batch, cex=0.75, ncol = 2)
+legend("topright", legend=levels(factor(plate.tumor)),pch= batch, cex=0.75, ncol = 2)
 ```
+
+With the MDSplot we are still not able to recognize any cluster of any group, so we can not conclude that 'plate' information could be a potential surrogate of batch effect.
 
 ## Session information
 
