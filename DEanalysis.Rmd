@@ -17,7 +17,10 @@ library(knitr)
 library(SummarizedExperiment)
 library(edgeR)
 library(geneplotter)
-
+library(sva)
+library(limma)
+library(calibrate)
+library(EnhancedVolcano)
 
 opts_chunk$set(cache=TRUE,
                cache.path="cache/file2",
@@ -32,35 +35,34 @@ coadse.filt.unnorm <- readRDS(file.path("results", "coadse.filt.unnorm.rds"))
 dge.filt.unnorm <- readRDS(file.path("results", "dge.filt.unnorm.rds"))
 coadse.filt <- readRDS(file.path("results", "coadse.filt.rds"))
 dge.filt <- readRDS(file.path("results", "dge.filt.rds"))
-
-
 ```
 
 # Differential expression
 
+After the data filtering and normalization, we are interested in identifying gene expression changes and associated p-values between tumor and control samples. For this task, we used the R/Bioconductor packages [sva](http://bioconductor.org/packages/sva) and [limma](https://bioconductor.org/packages/release/bioc/html/limma.html).
+We are adopting linear regression models, which in general are used in order to represent, in the most accurate way possible, something which is very complex. In the specific case of DE analysis, the model is used as a predictor of gene expression values. 
+For the purpose of fitting the said regression model, it is crucial to build a design matrix. The design matrix is a n x m matrix, where n is the number of samples and m is the number of coeffients which need to be estimated or the types of samples, like cases and controls.
+It needs to be defined for which factors to adjust. In our case we are working with a paired design, we visually identified a batch effect due to TSS and would consider gender as a relevant factor to adjust for. 
+We decide to proceed by only adjusting for the patient id, as it is already implicitly adjusting for both TSS and GENDER; in fact, in our data TSS as well as GENDER are identical between every pair of samples, which would make reduntand to adjust for all of them and would create technical problems during the inversion step of the matrix in the least square algorithm steps.
 
-The following step is to perform a simple examination of expression changes and their associated p-values using the R/Bioconductor package [sva](http://bioconductor.org/packages/sva) as follows:
-
-```{r, message=FALSE}
-library(sva)
-tss <- substr(colnames(dge.filt), 6, 7)
-mod <- model.matrix(~ coadse.filt$type + tss, colData(coadse.filt))
-mod0 <- model.matrix(~tss, colData(coadse.filt))
+In the follwing step we create the design matrix, only adjusting for the patient id and verify wether the matrix is full rank and so is invertible with no problem, which is the case.
+```{r}
+pid <- substr(colnames(dge.filt), 9, 12)
+mod <- model.matrix(~ type + pid, colData(coadse.filt))
+mod0 <- model.matrix(~pid, colData(coadse.filt))
+#Verify wether is full rank --> yes!
+is.fullrank(mod)
 pv <- f.pvalue(assays(coadse.filt)$logCPM, mod, mod0)
 sum(p.adjust(pv, method="fdr") < 0.01)
 ```
 
-There are `r sum(p.adjust(pv, method="fdr") < 0.01)` genes changing significantly
-their expression at FDR < 1%. In Figure \@ref(fig:pdist) below we show the distribution of the
-resulting p-values.
-
+There are `r sum(p.adjust(pv, method="fdr") < 0.01)` genes changing significantly their expression at FDR < 1%. In Figure \@ref(fig:pdist) below we show the distribution of the resulting p-values.
+The distribution of the p-value looks uniform with a peak a low p-values, indicating we are not under the null hypothesis of no differential expression but we are actually having differential expression values between tumor and control samples.
 ```{r pdist, echo=FALSE, out.width="400px", fig.cap="Distribution of raw p-values for an F-test on every gene between tumor and normal samples."}
-hist(pv, main="", las=1)
+hist(pv, main="", las=1, xlab="P-value")
 ```
 
-
 Then we are going to estimate surrogate variables using the `sva()` function.
-
 ```{r}
 sv <- sva(assays(coadse.filt)$logCPM, mod, mod0)
 sv$n
@@ -76,50 +78,75 @@ mod0sv <- cbind(mod0, sv$sv)
 pvsv <- f.pvalue(assays(coadse.filt)$logCPM, modsv, mod0sv)
 sum(p.adjust(pvsv, method="fdr") < 0.01)
 ```
-
 We have increased the number of changing genes to `r sum(p.adjust(pvsv, method="fdr") < 0.01)`.
-Figure \@ref(fig:psvdist) shows the resulting distribution of p-values.
-
+Figure \@ref(fig:psvdist) shows the resulting distribution of p-values. We can observe that, compared to the histgram of p-values before adjusting with sva, now we have more very low p-values, so the distribution is more skewed to the left than before.
 ```{r psvdist, echo=FALSE, out.width="400px", fig.cap="Distribution of raw p-values for an F-test on every gene between tumor and normal samples, adjusting for surrogate variables estimated with SVA."}
-hist(pvsv, main="", las=1)
+hist(pvsv, main="", las=1, xlab = "P-value")
 ```
 
-## -----------------------------
-## Differential expression analysis
-
-We used linear regression models to approach the differential expression (DE) analysis; for this purpose we used the R package "limma", which is widely used and well documented.
-
- !!!! Se tiene q redactar de verdad
- 
-Linear regression models are used in order to represent, in the most accurate way possible, something which is very complex. In the specific case of DE analysis, the linear regression is used as a predictor of gene expression values. 
-For the purpose of fitting the said regression model, it is then crucial to build a design matrix in order to solve the system of equations (as many equations as type of samples). The design matrix is a n x m matrix, where n is the number of samples and m is the number of coeffients which need to be estimated or the types of samples, like case and controls; it basically contains the information about which coefficient will be set to 0 in order to observe the difference of expression for the other one.
-In the following step we proceed with the building of the design matrix. 
-```{r}
-mod <- model.matrix(~type + bcr_patient_barcode , data = colData(coadse.filt))
-mod
-```
-
-The next step is to Adjust for the mean-variance realtionship. Two main methods are currently available. We decide to proceed with the voom() function, since as we can observe in the picture below, there are big differences in sample sizes among the samples.
-```{r}
+Next, we want to adjust for the mean-variance realtionship. Two main methods are currently available. We decide to proceed with the voom() function, since as we can observe in the Figure \@ref(fig:libsize), there are big differences in sample sizes among the samples. 
+```{r libsize}
 barplot(sort(dge.filt$samples$lib.size)/1e+06, xlab = "Samples", ylab = "Library sizes (Millions)")
 ```
+
+So, we calculate the weights that estimate the mean-variance realtionship at gene-by-sample level with the voom() function and we will use these weights to fit the model. 
 ```{r}
-v <- voom(dge.filt, mod, plot=TRUE)
+v <- voom(dge.filt, modsv, plot=TRUE)
+```
+Next, we fit the model. 
+```{r}
+# Fit linear model for each gene given a series of arrays
+fit<- lmFit(v,modsv)
+```
+We then calculate the moderated t-statistics.
+```{r}
+# compute moderated t-statistics, moderated F-statistic, and log-odds of differential expression by empirical Bayes moderation of the standard errors towards a common value.
+fit <- eBayes(fit)
+FDRcutoff <- 0.01
+```
+Here, we examine the differential expression analysis result of this part at a `r FDRcutoff` to have a broad overview.
+```{r}
+#Classify a series of related t-statistics as up, down or not significant. 
+res <- decideTests(fit, p.value = FDRcutoff) 
+summary(res)
+```
+We extract the genes chromosome to look at the distribution of the differential expressed genes among the chromosomes, again for the purpose of getting an overview of the data we will be working with.
+```{r}
+genesmd <- data.frame(chr = as.character(sub("\\_.*", "", seqnames(rowRanges(coadse.filt)))), symbol = rowData(coadse.filt)[, 1], stringsAsFactors = FALSE)
+unique(genesmd$chr)
+#Extract a table of the top-ranked genes from a linear model fit.
+tt <- topTable(fit, coef = 2, n = Inf)
+fit$genes <- genesmd
+sort(table(tt$chr[tt$adj.P.Val < FDRcutoff]), decreasing = TRUE)
 ```
 
-Next, we estimate correlation in repeated measurements of a blocking factor
-The function lmfit fits a linear model for each gene given a series of arrays
+One interesting aspect we would like to systematically assess is the accuracy of the model with different combinations of adjusting factors and when using different algorithms when adjusting for the mean variance relationship. 
+For doing this, we would need to use a dataset of genes which are known to be differentially expressed between patients with colon cancer and  control indiviudals with no colon cancer.
+At the moment, we could not find a suitable dataset for this task but in the future, to expand the analysis, it would be interesting to investigate this aspect further.
+Lastly, we just collect our set of differential expressed genes to proceed with further analyses.
+```{r}
+?decideTests
+DEgenes <- rownames(tt)[tt$adj.P.Val < FDRcutoff]
+length(DEgenes)
+```
+The number of DE genes, the adjusted p-value of which is under the FDR threshold (0.01), is `r length(DEgenes)`.
+
+## Vulcano plot 
+
+Lastly, we want to visualize the DE genes in a Volcano plot. We set two different thresholds: the log fold change threshold and the adjusted p-value threshold.
 
 ```{r}
-fit1<- lmFit(v,mod)
+EnhancedVolcano(tt,
+    lab = tt$symbol,
+    x = 'logFC',
+    y = 'adj.P.Val',
+    xlim = c(-8, 8),
+    title = 'Volcano Plot',
+    pCutoff = 10e-16,
+    FCcutoff = 3,
+    transcriptPointSize = 1.0,
+    transcriptLabSize = 3.0)
 ```
-
-```{r}
-fit <- eBayes(fit1)
-topTable(fit , coef = 2, n = Inf)
-```
-
-
 ## Session information
 
 ```{r, message=FALSE}
