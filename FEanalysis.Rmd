@@ -19,6 +19,9 @@ library(GOstats)
 library(xtable)
 library(org.Hs.eg.db)
 library(GSVAdata)
+library(GSVA)
+library(Category)
+
 
 opts_chunk$set(cache=TRUE,
                cache.path="cache/file2",
@@ -27,91 +30,35 @@ opts_chunk$set(cache=TRUE,
                fig.align="center",
                comment="")
 
-se <- readRDS(file.path("rawCounts", "seCOAD.rds"))
-dge <- readRDS(file.path("results", "dge.rds"))
-se.filt.unnorm <- readRDS(file.path("results", "coadse.filt.unnorm.rds"))
-dge.filt.unnorm <- readRDS(file.path("results", "dge.filt.unnorm.rds"))
 se.filt <- readRDS(file.path("results", "coadse.filt.rds"))
 dge.filt <- readRDS(file.path("results", "dge.filt.rds"))
 ```
-NOTES :
- - We could filter out every gene which has no functional annoation
- - We could select an important type of genes and see how many important genes fall into that category
-
-# Functional Enrichment
-We perform a functional enrichment analysis on the entire collection of GO gene sets.
-First we select all the genes from our paired dataset to define the gene universe. Then, we create the parameter object which contains  information about gene universe, DEgenes and the annotation package to use.
-By setting the conditional(params) to true, we are computing the significance of a GO term conditional on the significance of its children. Then, we properly run the functional enrichment and we store and visualize the results in a html format.
-```{r}
-geneUniverse <- rownames(coadse.filt)
-# Build a parameter object : information about gene universe, DEgenes and the annotation package to use.
-params <- new("GOHyperGParams", geneIds=DEgenes, universeGeneIds=geneUniverse,annotation="org.Hs.eg.db", ontology="BP", pvalueCutoff=0.05, testDirection="over")
-conditional(params) <- TRUE
-# Run the functional enrichment analysis
-hgOver <- hyperGTest(params)
-hgOver
-# Store and visualize  
-htmlReport(hgOver, file = "gotests.html")
-browseURL("gotests.html")
-# store the results in a dataframe
-goresults <- summary(hgOver)
-```
-We then have a look some of the results with the sake of having an overview of the data.
-```{r}
-# exploring
-head(summary(hgOver))
-```
-```{r}
-head(geneCounts(hgOver))
-```
-```{r}
-head(universeCounts(hgOver))
-```
-```{r}
-head(pvalues(hgOver))
-```
-Geneset which are either very small or that present a small number of DE genes are not really reliable. On the other hand, if the geneset is too big, its enrichment might provide little insights. In order to correct for this we filter out the goresults and only select the genesets which are neither too big nor too small.  
-```{r}
-goresults <- goresults[goresults$Size >= 3 & goresults$Size <= 300 & goresults$Count >= 3, ]
-goresults <- goresults[order(goresults$OddsRatio, decreasing=TRUE), ]
-head(goresults)
-```
-We now want to specifically know which are the genes that enrich each GO term. This is achieved in the next snippet and summarized in the produced html file.
-```{r}
-geneIDs <- geneIdsByCategory(hgOver)[goresults$GOBPID]
-geneSYMs <- sapply(geneIDs, function(id) AnnotationDbi::select(org.Hs.eg.db, columns = "SYMBOL", key = id, keytype ="ENTREZID")$SYMBOL)
-geneSYMs <- sapply(geneSYMs, paste, collapse = ", ")
-goresults <- cbind(goresults, Genes = geneSYMs)
-rownames(goresults) <- 1:nrow(goresults)
-xtab <- xtable(goresults, align = "l|c|r|r|r|r|r|p{3cm}|p{3cm}|")
-print(xtab, file = "goresults.html", type = "html")
-browseURL("goresults.html")
-```
-
 
 # GSEA
 
-The magnitude of gene expression changes may be small and very few significant DE genes will be idenified after having adjusted for multiple testing. For this reason, we want to see if there are small but consistent changes occuring for a number of genes operating in a common pathway by assessing DE direclty at the geneset level starting from the expression data themselves.
+The magnitude of gene expression changes may be small and very few significant DE genes will be idenified after having adjusted for multiple testing. For this reason, we want to see if there are small but consistent changes occuring for a number of genes operating in a common pathway by assessing DE direclty at the geneset level starting from the expression data themselves. We approach this analysis by using the GSEA algorithm.
 
+## Preparation
 
-## preparation
-To start with the GSEA, we start putting our expression data and the collection of gene sets in a GeneSetCollection object.
+To start with the GSEA, we start putting our expression data and the collection of gene sets from c2BroadSets in a GeneSetCollection object.
+
 ```{r}
 # collect gene sets
 data(c2BroadSets)
-#c2BroadSets <- c2BroadSets[c(grep("^KEGG", names(c2BroadSets)))]
-c2BroadSets <- c2BroadSets[c(grep("^KEGG", names(c2BroadSets)),grep("^REACTOME", names(c2BroadSets)), grep("^BIOCARTA", names(c2BroadSets)))]
 gsc <- GeneSetCollection(c2BroadSets)
 gsc
 ```
-Then, we need to map the identifiers from the gene sets to the identifiers of the data we are going to analyze:
+
+Then, we need to map the identifiers from the gene sets to the identifiers of the data we are going to analyze. Furthermore, we create an incidence matrix which indicates which genes belong to what gene set.
+
 ```{r}
 gsc <- mapIdentifiers(gsc, AnnoOrEntrezIdentifier(metadata(coadse.filt)$annotation))
-# remove genes which are not annotated to any geneset
 Im <- incidence(gsc)
 dim(Im)
 ```
+
 Once done it, the following step will be discard those genes that do not form part of our data and also discard all genes in our data that are not annotated to gene sets.
+
 ```{r}
 Im <- Im[, colnames(Im) %in% rownames(coadse.filt)]
 dim(Im)
@@ -120,59 +67,50 @@ dim(coadse.filt)
 dge.filt <- dge.filt[colnames(Im),]
 dim(dge.filt)
 ```
-As a result we have discarted almost 2000 genes that didn't belong to our data
 
+As a result we have discarted almost 19000 genes that didn't belong to our data.
 
 ## Simple GSEA
 
 In order to have a sizeable list of DE genes we are going to perform a Gene Set Enrichment Analysis to introduce a method for pathway analysis assessing DE directly at gene set level.
 
+We decided to filter out the genesets that contain less than 10 genes. In fact, very small gene sets may induce little reliability and increase type 1 errors. Then we also calculate the zs statistic score.
 
-```{r}
-qq <- qqnorm(tt$t)
-abline(0,1)
-chroutliers <- tt$chr[abs(tt$t) > 10]
-text(qq$x[abs(qq$y) > 10], qq$y[abs(qq$y) > 10], chroutliers, pos = 4)
-```
-
-To have some robustness on we are interested in requiring gene sets with a minimum size like, for instance, 10 genes. Then we also the zs statistic score:
-NO SE CUANTOS PONER
 ```{r}
 Im <- Im[rowSums(Im) >= 10, ]
 dim(Im)
 tGSgenes <- tt[match(colnames(Im), rownames(tt)), "t"]
-length(tGSgenes)
 zS <- sqrt(rowSums(Im)) * (as.vector(Im %*% tGSgenes)/rowSums(Im))
-length(zS)
 ```
 
-To have a quick overview of how many promising gene sets could be DE, we perform a quantile-quantile (QQ) plot of gene set Z-scores:
-```{r}
+The incidence matrix after the filtering has lost 1000 gene sets approximately.
+
+```{r qqplot, fig.cap= "Q-Q Plot of gene set Z-scores"}
 qqnorm(zS)
 abline(0,1)
 ```
+
+As we can observe in the Q-Q plot of figure \@ref(fig:qqplot) we can detect that the gene sets Z-scores do not follow a normal distribution which indicates a promising number of DE gene sets.
+Just to have an overview we show the gene sets with the largest Z-scores.
 
 ```{r}
 rnkGS <- sort(abs(zS), decreasing = TRUE)
 head(rnkGS)
 ```
-Since under the null hypothesis of no differential expressed gene sets, the Z-scores follow a standard normal distribution, so, we can perform one sample z-test by calculating p-values:
+
+We perform one sample z-test and we compute the number of DE gene sets according to the adjusted p-value with and FDR of 1%.
+
 ```{r}
 pv <- pmin(pnorm(zS), 1 - pnorm(zS))
-sum(pv < 0.05)
-```
-
-After calculating the p-values, the gene set overlaps render those tests dependent, and therefore, multiple testing adjustment becomes conservative. But, we can still use it to have a first selection of candidate gene sets at, for instance, 1% FDR:
-```{r}
 pvadj <- p.adjust(pv, method = "fdr")
-DEgs <- names(pvadj)[which(pvadj < 0.01)]
+DEgs <- names(pvadj)[which(pvadj < 0.001)]
 length(DEgs)
 head(DEgs, n = 3)
 ```
 
-Due to that overlap shoud be taken into account, we can calculate an overlap index with the function computeGeneSetsOverlap() and build a table ranking of pairs of gene sets by overlaps:
+Since gene sets can overlap, we need to take that into account before interpreting the DE gene sets. In order to do so, we use the function computeGeneSetsOverlap which calculates an overlap index. Then, we are going to build a table ranking of pairs of gene sets by overlaps.
+
 ```{r}
-library(GSVA)
 gsov <- computeGeneSetsOverlap(gsc[DEgs], rownames(coadse.filt))
 trimask <- upper.tri(gsov)
 rnkOv <- data.frame(gs1 = row(gsov)[trimask], gs2 = col(gsov)[trimask], ov = gsov[trimask])
@@ -184,18 +122,22 @@ sum(rnkOv$ov == 1)
 ## how many pairs of gene sets share less than 5% of the genes?
 sum(rnkOv$ov < 0.05)
 ```
+
+
 If half of the genes are upregulated and the other half down-regulated, the mean shift we have calculated cancels out. To detect such a change one should used this other X2-score:
+
 ```{r}
-library(Category)
 xS <- applyByCategory(tGSgenes, Im, function(x) (sum((x - mean(x))^2) - (length(x) - 1))/(2 *
 (length(x) - 1)))
 ```
+
 As we did with the z-test, we are going to compute p-values and adjust them to 1% FDR for gene sets with more than about 20 genes:
+
 ```{r}
 rnkGS <- sort(abs(xS), decreasing = TRUE)
 pv <- pmin(pnorm(xS), 1 - pnorm(xS))
 pvadj <- p.adjust(pv)
-DEgsByScale <- names(pvadj)[which(pvadj < 0.01)]
+DEgsByScale <- names(pvadj)[which(pvadj < 0.0001)]
 length(DEgsByScale)
 length(intersect(DEgs, DEgsByScale))
 setdiff(DEgsByScale, DEgs)
@@ -228,7 +170,6 @@ Now, we are going to calculate ES independently of any phenotype and for each sa
 For that, we are going to obtain an expression data matrix with the same number of samples but instead of genes, with gene sets and, instead of gene expression values, ES that are sample-wise gene-level summaries of expression to use them as gene expression values.
 
 ```{r}
-library(GSVA)
 GSexpr <- gsva(assays(coadse.filt)$logCPM, gsc,
 min.sz=5, max.sz=300, verbose=FALSE)
 class(GSexpr)
