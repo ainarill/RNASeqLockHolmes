@@ -121,7 +121,7 @@ table(coadse.paired$type)
 
 ```
 
-As is shown in this table, we finally found a total of **41 non-tumor** samples and **46 tumor** paired samples. Note that there are more tumor samples than non-tumor, possibly done that more than one tumor sample was obtained from the same patient. However, we consider that with this number of samples should be sufficient powered to detect expression changes between tumor and non-tumor samples.
+As is shown in this table, we finally found a total of **38 non-tumor** samples and **38 tumor** paired samples. However, we consider that with this number of samples should be sufficient powered to detect expression changes between tumor and non-tumor samples.
 
 
 ## Sequencing depth
@@ -136,12 +136,13 @@ sort(sampledepth)
 par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
 ord <- order(dge.paired$sample$lib.size)
 barplot(dge.paired$sample$lib.size[ord]/1e+06, las = 1, ylab = "Millions of reads", xlab = "Samples",
-        col = c("cyan", "orange")[coadse.paired$type] )
+        col = c("cyan", "orange")[coadse.paired$type[ord]] )
 legend("topleft", c("Normal", "Tumor"), fill = c("cyan", "orange"), inset = 0.01)
 ```
 
+
 In the plot we observe two main aspects that are worth paying attention to.
-First, we observe that surprisingly all the tumor samples present a lower sequencing depth than the normal samples. Even though we could not find any reliable explaination for this behaviour so far in our research, we considered this event dispensable at this time as the sequencing depth will be taken into consideration during the normalization steps.
+First, we observe that in general the tumor samples present a lower sequencing depth than the normal samples. Even though we could not find any reliable explaination for this behaviour so far in our research, we considered this event dispensable at this time as the sequencing depth will be taken into consideration during the normalization steps.
 One other important aspect is that we observe that some sample present considerable differences in the sequencing depth and specifically we can distinguish a couple of samples on the left of the graph that present  considerably low sequencing depths: this may generate problems in further analysis of the data. 
 For this reason we identify these samples by looking at the at the sample depth as shown below. 
 ```{r}
@@ -170,14 +171,13 @@ sort(sampledepth)
 par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
 ord <- order(dge.paired$sample$lib.size)
 barplot(dge.paired$sample$lib.size[ord]/1e+06, las = 1, ylab = "Millions of reads", xlab = "Samples",
-        col = c("cyan", "orange")[coadse.paired$type] )
+        col = c("cyan", "orange")[coadse.paired$type[ord]] )
 legend("topleft", c("Normal", "Tumor"), fill = c("cyan", "orange"), inset = 0.01)
 ```
 
 ## Gender among samples
 
-In order to collect an even broader understanding of the dataset we then furher explore the sequencing 
-depth highlighting female and male samples.
+In order to collect an even broader understanding of the dataset we then furher explore the sequencing depth highlighting female and male samples.
 
 ```{r}
 ord <- order(dge.paired$sample$lib.size)
@@ -259,8 +259,7 @@ lines(h$mids, table(x), type = "h", lwd = 10, lend = 1, col = "darkred")
 legend("topright", c("All genes", "Filtered genes"), fill = c("grey", "darkred"))
 ```
 
-Before proceeding with the normalization steps, we prefer to save a copy of the unnormalized data 
-in case we later need to work on it again.
+Before proceeding with the normalization steps, we prefer to save a copy of the unnormalized data in case we later need to work on it again.
 
 ```{r}
 saveRDS(coadse.filt, file.path("results", "coadse.filt.unnorm.rds"))
@@ -295,11 +294,12 @@ In Figure \@ref(fig:maPlotsTumor) we observe the MA-plots for the Tumor samples 
 par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
 setmp <- coadse.filt[, coadse.filt$type == "tumor"]
 dgetmp <- dge.filt[, coadse.filt$type == "tumor"]
+lettersext <- c(LETTERS, sapply(LETTERS, function(x) paste0(x, LETTERS)))
 for (i in 1:ncol(setmp)) {
   A <- rowMeans(assays(setmp)$logCPM)
   M <- assays(setmp)$logCPM[, i] - A
   samplename <- substr(as.character(setmp$bcr_patient_barcode[i]), 1, 12)
-  smoothScatter(A, M, main=samplename, las=1)
+  smoothScatter(A, M, main=paste(lettersext[i], samplename, sep=") ", collapse=NULL), las=1)
   abline(h=0, col="blue", lwd=2)
   lo <- lowess(M ~ A)
   lines(lo$x, lo$y, col="red", lwd=2)
@@ -316,7 +316,7 @@ for (i in 1:ncol(setmp)) {
   A <- rowMeans(assays(setmp)$logCPM)
   M <- assays(setmp)$logCPM[, i] - A
   samplename <- substr(as.character(setmp$bcr_patient_barcode[i]), 1, 12)
-  smoothScatter(A, M, main=samplename, las=1)
+  smoothScatter(A, M, main=paste(lettersext[i], samplename, sep=") ", collapse=NULL), las=1)
   abline(h=0, col="blue", lwd=2)
   lo <- lowess(M ~ A)
   lines(lo$x, lo$y, col="red", lwd=2)
@@ -401,11 +401,11 @@ plot(sampleDendrogram, main="Hierarchical clustering of samples")
 legend("topright", paste("Batch", sort(unique(batch)), levels(factor(tss))), fill=sort(unique(batch)))
 ```
 
-We can observe that samples cluster primarily by sample type, tumor or normal. TSS seems to have
-a stronger effect among the normal samples, while it distributes better among the tumor samples.
+We can observe that samples cluster primarily by sample type, tumor or normal. TSS seems to have a stronger effect among the normal samples, while it distributes better among the tumor samples.
 We may consider discarding samples leading to an unbalanced distribution of the outcome across batches.
 
-In Figure \@ref(fig:mdsPlot) we show the corresponding MDS plot. Here we see more clearly that the first source of variation separates tumor from normal samples. We can also observe that two tumor samples, corresponding to individuals `A6-5665`, `A6-2884`, `A6-2569` and`A6-2684` are separated from the rest, just as it happens in the hierchical clustering. A closer examination of their corresponding MA-plots also reveals a slight dependence of expression changes on average expression. We may consider discarding these four samples and doing the MDS plot again to have a closer look to the differences among the rest of the samples and their relationship with TSS.
+In Figure \@ref(fig:mdsPlot) we show the corresponding MDS plot. Here we see more clearly that the first source of variation separates tumor from normal samples.
+#We can also observe that two tumor samples, corresponding to individuals `A6-5665`, `A6-2884`, `A6-2569` and`A6-2684` are separated from the rest, just as it happens in the hierchical clustering. A closer examination of their corresponding MA-plots also reveals a slight dependence of expression changes on average expression. We may consider discarding these four samples and doing the MDS plot again to have a closer look to the differences among the rest of the samples and their relationship with TSS.
 
 ```{r mdsPlot, fig.height=7, fig.width=14, dpi=100, echo=TRUE, fig.cap="Figure S7: Multidimensional scaling plot of the samples."}
 plotMDS(dge.paired, labels=outcome, col=batch)

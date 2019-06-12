@@ -129,7 +129,6 @@ In order to have a sizeable list of DE genes we are going to perform a Gene Set 
 
 
 ```{r}
-# ehm ... not normal at all
 qq <- qqnorm(tt$t)
 abline(0,1)
 chroutliers <- tt$chr[abs(tt$t) > 10]
@@ -223,6 +222,47 @@ plotGS(coadse.filt, topgs1genes, "type", main = names(rnkGS)[1], cex.lab = 2, la
 plotGS(coadse.filt, topgs2genes, "type", main = names(rnkGS)[2], cex.lab = 2, las = 1)
 plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[3], cex.lab = 2, las = 1)
 ```
+#############################
+
+Now, we are going to calculate ES independently of any phenotype and for each sample using a GSEA method unsupervised and single-sample.
+For that, we are going to obtain an expression data matrix with the same number of samples but instead of genes, with gene sets and, instead of gene expression values, ES that are sample-wise gene-level summaries of expression to use them as gene expression values.
+
+```{r}
+library(GSVA)
+GSexpr <- gsva(assays(coadse.filt)$logCPM, gsc,
+min.sz=5, max.sz=300, verbose=FALSE)
+class(GSexpr)
+dim(GSexpr)
+```
+.############ HERE I DONT UNDERSTAND 
+
+```{r}
+svaobj <- sva(GSexpr, mod, mod0)
+modSVs <- cbind(mod, svaobj$sv)
+corfit <- duplicateCorrelation(GSexpr, modSVs) ## blocking variable??
+fit <- lmFit(GSexpr, modSVs, correlation = corfit$consensus)
+fit <- eBayes(fit)
+tt <- topTable(fit, coef = 2, n = Inf)
+DEgs <- rownames(tt[tt$adj.P.Val < 0.01, , drop = FALSE])
+DEgs
+```
+So, we have 114 gene sets with type-specific expression appearing to be called DE at 1% FDR.
+To see how they are differential expressed, we are going to plot two of them:
+
+```{r}
+#par(mfrow = c(1, 2))
+boxplot(GSexpr["KEGG_ADIPOCYTOKINE_SIGNALING_PATHWAY", ] ~ coadse.filt$type, main = "KEGG_ADIPOCYTOKINE_SIGNALING_PATHWAY", las = 1, cex.axis = 2)
+boxplot(GSexpr["KEGG_LONG_TERM_POTENTIATION", ] ~ coadse.filt$type, main = "KEGG_LONG_TERM_POTENTIATION", las = 1, cex.axis = 2)
+```
+```{r volc}
+plot(tt$logFC, -log10(tt$P.Value), xlab="Log2 fold-change", ylab="-log10 P-value",
+pch=".", cex=5, col=grey(0.75), cex.axis=1.2, cex.lab=1.5, las=1)
+posx <- tt[tt$adj.P.Val < 0.01, "logFC"] ; posy <- -log10(tt[tt$adj.P.Val < 0.01, "P.Value"])
+points(posx, posy, pch=".", cex=5, col="red")
+text(posx, posy, rownames(tt)[tt$adj.P.Val < 0.01], pos=1)
+```
+
+The volcano plot in figure \@ref(fig:volc) points all the gene sets with type-specific genes as being differential expressed between tumor and normal.
 ## Session information
 
 ```{r, message=FALSE}
