@@ -23,6 +23,8 @@ and the resulting projectTemplate.html to understand where this is being dumpted
 
 ```{r setup, cache=FALSE, echo=FALSE, results='hide', message=FALSE}
 library(knitr)
+library(SummarizedExperiment)
+library(edgeR)
 
 opts_chunk$set(cache=TRUE,
                cache.path="cache/QA",
@@ -30,6 +32,7 @@ opts_chunk$set(cache=TRUE,
                autodep=TRUE,
                fig.align="center",
                comment="")
+coadse <- readRDS(file.path("rawCounts", "seCOAD.rds"))
 ```
 
 # Quality assessment
@@ -164,6 +167,7 @@ We will keep also only those genes that have this minimum level of expresseion i
 
 ```{r}
 cpmcutoff.tumor <- round(10/min(dge.tumor$sample$lib.size/1e+06), digits = 1)
+cpmcutoff.tumor 
 sprintf("Cutoff: %s", cpmcutoff.tumor)
 nsamplescutoff.tumor <- min(table(coadse.tumor$ajcc_pathologic_tumor_stage))
 nsamplescutoff.tumor
@@ -201,7 +205,7 @@ assays(coadse.tumor.filt)$logCPM <- cpm(dge.tumor.filt, log=TRUE, normalized.lib
 ```
 
 ```{r}
-saveRDS(coadse.tumor.filt, file.path("results", "coadse.tumor.rds"))
+saveRDS(coadse.tumor.filt, file.path("results", "coadse.tumor.filt.rds"))
 saveRDS(dge.tumor.filt, file.path("results", "dge.tumor.filt.rds"))
 ```
 
@@ -211,7 +215,7 @@ saveRDS(dge.tumor.filt, file.path("results", "dge.tumor.filt.rds"))
 We now want to visualize the expression profiles of the normalized data for each tumor stage. 
 
 For Stage I --> 
-```{r maPlotsTumor, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage I."}
+```{r maPlotsTumor1, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage I."}
 Stage1 <- coadse.tumor.filt[, coadse.tumor.filt$ajcc_pathologic_tumor_stage == "Stage I"]
 par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
 for (i in 1:ncol(Stage1)) {
@@ -223,7 +227,7 @@ abline(h=0, col="blue", lwd=2) ; lo <- lowess(M ~ A) ; lines(lo$x, lo$y, col="re
 ```
 
 For Stage II --> 
-```{r maPlotsTumor, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage I."}
+```{r maPlotsTumor2, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage I."}
 Stage2 <- coadse.tumor.filt[, coadse.tumor.filt$ajcc_pathologic_tumor_stage == "Stage II"]
 par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
 for (i in 1:ncol(Stage2)) {
@@ -236,7 +240,7 @@ abline(h=0, col="blue", lwd=2) ; lo <- lowess(M ~ A) ; lines(lo$x, lo$y, col="re
 
 
 For Stage III --> 
-```{r maPlotsTumor, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage I."}
+```{r maPlotsTumor3, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage I."}
 Stage3 <- coadse.tumor.filt[, coadse.tumor.filt$ajcc_pathologic_tumor_stage == "Stage III"]
 par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
 for (i in 1:ncol(Stage3)) {
@@ -248,7 +252,7 @@ abline(h=0, col="blue", lwd=2) ; lo <- lowess(M ~ A) ; lines(lo$x, lo$y, col="re
 ```
 
 For Stage IV --> 
-```{r maPlotsTumor, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage I."}
+```{r maPlotsTumor4, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage I."}
 Stage4 <- coadse.tumor.filt[, coadse.tumor.filt$ajcc_pathologic_tumor_stage == "Stage IV"]
 par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
 for (i in 1:ncol(Stage4)) {

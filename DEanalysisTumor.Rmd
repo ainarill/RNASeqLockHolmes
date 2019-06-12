@@ -1,0 +1,105 @@
+---
+output:
+  BiocStyle::html_document
+---
+
+<!---
+Because we split the analysis pipeline in different independent files,
+to speed up processing it, here in the setup block we load libraries and
+objects that were loaded or produced in the previously processed file,
+and which are necessary in this file.
+--->
+
+
+
+```{r setup, cache=FALSE, echo=FALSE, results='hide', message=FALSE}
+library(knitr)
+library(SummarizedExperiment)
+library(edgeR)
+library(geneplotter)
+library(sva)
+library(limma)
+library(calibrate)
+library(EnhancedVolcano)
+
+opts_chunk$set(cache=TRUE,
+               cache.path="cache/file2",
+               cache.extra=R.version.string,
+               autodep=TRUE,
+               fig.align="center",
+               comment="")
+
+coadse <- readRDS(file.path("rawCounts", "seCOAD.rds"))
+dge <- readRDS(file.path("results", "dge.rds"))
+coadse.filt.unnorm <- readRDS(file.path("results", "coadse.filt.unnorm.rds"))
+dge.filt.unnorm <- readRDS(file.path("results", "dge.filt.unnorm.rds"))
+coadse.filt <- readRDS(file.path("results", "coadse.filt.rds"))
+dge.filt <- readRDS(file.path("results", "dge.filt.rds"))
+coadse.tumor <- readRDS(file.path("results", "coadse.tumor.filt.rds"))
+dge.tumor <- readRDS(file.path("results", "dge.tumor.filt.rds"))
+```
+
+# Differential expression
+
+```{r}
+counts_norm <- assays(coadse.tumor)$logCPM
+rownames(counts_norm) <- rowData(coadse.tumor)$symbol
+as.numeric(coadse.tumor["UBE2V1", ])
+ube2v1_vec <- as.numeric(counts_norm["UBE2V1", ])
+ube2v1_df <- data.frame(UBE2V1 = ube2v1_vec)
+ggplot(ube2v1_df, aes(names(ube2v1_df), UBE2V1)) +  
+      geom_boxplot(fill = "red") + 
+      scale_y_continuous(limits = c(0, 6), expand = c(0, 0)) + 
+      theme_classic() + 
+      theme(axis.text.x = element_blank(), axis.title.x = element_blank()) 
+low_thresh <- quantile(ube2v1_vec)[2]
+high_thresh <- quantile(ube2v1_vec)[4]
+samples_index_low <- which(ube2v1_vec < low_thresh)
+samples_index_high <- which(ube2v1_vec > high_thresh)
+se_norm_dea <- coadse.tumor[, c(samples_index_high, samples_index_low)]
+colData(se_norm_dea)$ube2v1_status <- factor(c(rep("high", length(samples_index_high)), rep("low", length(samples_index_low))))
+counts_norm_dea <- assays(se_norm_dea)$logCPM
+rownames(counts_norm_dea) <- rowData(se_norm_dea)$symbol
+ggplot(data.frame(expression = counts_norm_dea["UBE2V1",], status = colData(se_norm_dea)$ube2v1_status), aes(status, expression)) + geom_boxplot()
+```
+
+
+```{r}
+mod <- model.matrix(~ ajcc_pathologic_tumor_stage + age_at_initial_pathologic_diagnosis + gender  , colData(coadse.tumor))
+mod0 <- model.matrix(~ age_at_initial_pathologic_diagnosis + gender  , colData(coadse.tumor))
+sv <- sva(assays(coadse.tumor)$logCPM, mod, mod0)
+modsv <- cbind(mod, sv$sv)
+mod0sv <- cbind(mod0, sv$sv)
+v <- voom(dge.tumor, modsv)
+fit<- lmFit(v,modsv)
+fit <- eBayes(fit)
+# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5705125/
+res <- decideTests(fit, p.value = 0.001) 
+summary(res)
+#Extract a table of the top-ranked genes from a linear model fit.
+tt <- topTable(fit,coef=2,  n = Inf)
+DEgenes <- rownames(tt)[tt$adj.P.Val < 0.01]
+length(DEgenes)
+```
+The number of DE genes, the adjusted p-value of which is under the FDR threshold (0.01), is `r length(DEgenes)`.
+
+## Volcano plot 
+Lastly, we want to visualize the DE genes in a Volcano plot. We set two different thresholds: the log fold change threshold and the adjusted p-value threshold.
+
+```{r}
+EnhancedVolcano(tt,
+    lab = tt$symbol,
+    x = 'logFC',
+    y = 'adj.P.Val',
+    xlim = c(-8, 8),
+    title = 'Volcano Plot',
+    pCutoff = 10e-16,
+    FCcutoff = 3,
+    transcriptPointSize = 1.0,
+    transcriptLabSize = 3.0)
+```
+## Session information
+
+```{r, message=FALSE}
+sessionInfo()
+```

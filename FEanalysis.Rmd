@@ -99,8 +99,8 @@ To start with the GSEA, we start putting our expression data and the collection 
 ```{r}
 # collect gene sets
 data(c2BroadSets)
-c2BroadSets <- c2BroadSets[c(grep("^KEGG", names(c2BroadSets)))]
-#c2BroadSets <- c2BroadSets[c(grep("^KEGG", names(c2BroadSets)),grep("^REACTOME", names(c2BroadSets)), grep("^BIOCARTA", names(c2BroadSets)))]
+#c2BroadSets <- c2BroadSets[c(grep("^KEGG", names(c2BroadSets)))]
+c2BroadSets <- c2BroadSets[c(grep("^KEGG", names(c2BroadSets)),grep("^REACTOME", names(c2BroadSets)), grep("^BIOCARTA", names(c2BroadSets)))]
 gsc <- GeneSetCollection(c2BroadSets)
 gsc
 ```
