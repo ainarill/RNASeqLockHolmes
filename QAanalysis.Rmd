@@ -194,8 +194,9 @@ multidensity(as.list(as.data.frame(assays(coadse.paired)$logCPM)), xlab = "log2 
              main = "All samples", cex.axis = 1.2, cex.lab = 1.5, las = 1)
 ```
 
-In figure \@ref(fig:disrRawExpAll) we can observe a non-parametric density distribution of expression profiles per sample in terms of logarithmic units. As expected the expression values pr sample follow a bimodal distribution with an early peak that corresponds to lowly-expressed genes and a later peak that correponds to highly-expressed ones.
-In order to provide a clearer visualization, we decided to divide the dataset into two smaller subsets, specifically tumor samples and normal samples. 
+In figure \@ref(fig:disrRawExpAll) we can observe a non-parametric density distribution of expression profiles per sample in terms of logarithmic units. As expected the expression values per sample follow a bimodal distribution with an early peak that corresponds to lowly-expressed genes and a later peak that correponds to highly-expressed ones.
+In order to provide a clearer visualization, we decided to divide the dataset into two smaller subsets, specifically tumor samples and normal samples.
+
 ```{r disrRawExpComp, echo=FALSE, fig.height=4, fig.width=10, out.width="800px", fig.cap="Non-parametric density distribution of expression profiles per sample.", message=FALSE}
 tumor_mask <- coadse.paired$type == "tumor"
 non_tumor_mask <- coadse.paired$type == "normal"
