@@ -49,6 +49,17 @@ To start with the GSEA, we start putting our expression data and the collection 
 data(c2BroadSets)
 gsc <- GeneSetCollection(c2BroadSets)
 gsc
+length(gsc) # number of gene sets in the collection
+head(names(gsc)) # some of the gene sets in the collection
+```
+
+In order to reduce the amount of data to analyse, we are going to restrict the analysis to the pathways `KEGG`, `REACTOME` and `BIOCARTA`.
+
+```{r}
+gsc <- gsc[c(grep("^KEGG", names(gsc)),
+grep("^REACTOME", names(gsc)), grep("^BIOCARTA", names(gsc)))]
+gsc
+length(gsc)
 ```
 
 Now we can start our GSEA analysis, using the algorithm refered as *simple GSEA* (Irizarry et al. (2009)[https://journals.sagepub.com/doi/abs/10.1177/0962280209351908]). 
@@ -57,9 +68,12 @@ First, we need to map the identifiers from the gene sets to the identifiers of t
 
 ```{r}
 gsc <- mapIdentifiers(gsc, AnnoOrEntrezIdentifier(metadata(coadse.filt)$annotation))
+gsc
 Im <- incidence(gsc)
 dim(Im)
+Im[1:2, 1:10]
 ```
+We can see that several genes are present in more than one gene set, so later on we are going to go through overlaped gen sets.
 
 Once done it, the following step will be discard those genes that do not form part of our data and also discard all genes in our data that are not annotated to gene sets.
 
@@ -72,7 +86,7 @@ dge.filt <- dge.filt[colnames(Im),]
 dim(dge.filt)
 ```
 
-As a result we have discarted almost 19000 genes that didn't belong to our data.
+As a result we have discarted almost **2600** genes that didn't belong to our data.
 
 In order to have a sizeable list of DE genes we are going to perform a *Gene Set Enrichment Analysis* to introduce a method for pathway analysis assessing DE directly at gene set level.
 # Ups! Creo que lo que evitamos haciendo GSEA justamente es hacer una sizeable list of DE genes, tal y como lo entiendo.
@@ -136,14 +150,14 @@ We perform one sample z-test and we compute the number of DE gene sets according
 
 ```{r}
 pv <- pmin(pnorm(zS), 1 - pnorm(zS))
+sum(pv < 0.05)
 pvadj <- p.adjust(pv, method = "fdr")
 DEgs <- names(pvadj)[which(pvadj < 0.01)]
-DEgs
 length(DEgs)
 head(DEgs, n = 3)
 ```
 
-Since gene sets can overlap, we need to take that into account before interpreting the DE gene sets. In order to do so, we use the function computeGeneSetsOverlap which calculates an overlap index. Then, we are going to build a table ranking of pairs of gene sets by overlaps.
+As mentioned before, since gene sets can overlap, we need to take that into account before interpreting the DE gene sets. In order to do so, we use the function `computeGeneSetsOverlap` which calculates an overlap index. Then, we are going to build a table ranking of pairs of gene sets by overlaps.
 
 ```{r}
 gsov <- computeGeneSetsOverlap(gsc[DEgs], rownames(coadse.filt))
@@ -159,7 +173,7 @@ sum(rnkOv$ov < 0.05)
 ```
 There are `r sum(rnkOv$ov == 1)` pairs of gene sets that are identical, and `r sum(rnkOv$ov < 0.05)` that share less than 5% of the genes.
 
-If half of the genes are upregulated and the other half down-regulated, the mean shift we have calculated cancels out. To detect such a change one should used this other X2-score:
+If half of the genes are upregulated and the other half down-regulated, the mean shift we have calculated cancels out. This is known as a change in scale, and to detect such a change one should used this other X2-score:
 
 ```{r}
 xS <- applyByCategory(tGSgenes, Im, function(x) (sum((x - mean(x))^2) - (length(x) - 1))/(2 * 
@@ -170,6 +184,7 @@ As we did with the z-test, we are going to compute p-values and adjust them to 1
 
 ```{r}
 rnkGS <- sort(abs(xS), decreasing = TRUE)
+head(rnkGS)
 pv <- pmin(pnorm(xS), 1 - pnorm(xS))
 pvadj <- p.adjust(pv)
 DEgsByScale <- names(pvadj)[which(pvadj < 0.01)]
