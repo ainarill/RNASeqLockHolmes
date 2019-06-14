@@ -17,10 +17,9 @@ library(knitr)
 library(SummarizedExperiment)
 library(edgeR)
 library(geneplotter)
-library(sva)
 library(limma)
 library(calibrate)
-library(EnhancedVolcano)
+library(ggplot2)
 
 opts_chunk$set(cache=TRUE,
                cache.path="cache/file2",
@@ -29,75 +28,46 @@ opts_chunk$set(cache=TRUE,
                fig.align="center",
                comment="")
 
-coadse <- readRDS(file.path("rawCounts", "seCOAD.rds"))
-dge <- readRDS(file.path("results", "dge.rds"))
-coadse.filt.unnorm <- readRDS(file.path("results", "coadse.filt.unnorm.rds"))
-dge.filt.unnorm <- readRDS(file.path("results", "dge.filt.unnorm.rds"))
-coadse.filt <- readRDS(file.path("results", "coadse.filt.rds"))
-dge.filt <- readRDS(file.path("results", "dge.filt.rds"))
 coadse.tumor <- readRDS(file.path("results", "coadse.tumor.filt.rds"))
 dge.tumor <- readRDS(file.path("results", "dge.tumor.filt.rds"))
 ```
 
 # Differential expression
 
+After having filtered and normalized our tumor dataset, we looked for differential expression of genes among the cancer stages.
+We applied a limma voom pipeline, whose steps are explained in depth already in the paired DEanalysis section, so in this section we only focus on the differences.
+Since the tumor stage has 4 different values, we decide to use a model with no intercept and a contrast matrix.
+After having obtained the model, we applied eBayes. After multiple test adjusting, we are left with no DE genes. 
 ```{r}
-counts_norm <- assays(coadse.tumor)$logCPM
-rownames(counts_norm) <- rowData(coadse.tumor)$symbol
-as.numeric(coadse.tumor["UBE2V1", ])
-ube2v1_vec <- as.numeric(counts_norm["UBE2V1", ])
-ube2v1_df <- data.frame(UBE2V1 = ube2v1_vec)
-ggplot(ube2v1_df, aes(names(ube2v1_df), UBE2V1)) +  
-      geom_boxplot(fill = "red") + 
-      scale_y_continuous(limits = c(0, 6), expand = c(0, 0)) + 
-      theme_classic() + 
-      theme(axis.text.x = element_blank(), axis.title.x = element_blank()) 
-low_thresh <- quantile(ube2v1_vec)[2]
-high_thresh <- quantile(ube2v1_vec)[4]
-samples_index_low <- which(ube2v1_vec < low_thresh)
-samples_index_high <- which(ube2v1_vec > high_thresh)
-se_norm_dea <- coadse.tumor[, c(samples_index_high, samples_index_low)]
-colData(se_norm_dea)$ube2v1_status <- factor(c(rep("high", length(samples_index_high)), rep("low", length(samples_index_low))))
-counts_norm_dea <- assays(se_norm_dea)$logCPM
-rownames(counts_norm_dea) <- rowData(se_norm_dea)$symbol
-ggplot(data.frame(expression = counts_norm_dea["UBE2V1",], status = colData(se_norm_dea)$ube2v1_status), aes(status, expression)) + geom_boxplot()
-```
-
-
-```{r}
-mod <- model.matrix(~ ajcc_pathologic_tumor_stage + age_at_initial_pathologic_diagnosis + gender  , colData(coadse.tumor))
-mod0 <- model.matrix(~ age_at_initial_pathologic_diagnosis + gender  , colData(coadse.tumor))
-sv <- sva(assays(coadse.tumor)$logCPM, mod, mod0)
-modsv <- cbind(mod, sv$sv)
-mod0sv <- cbind(mod0, sv$sv)
-v <- voom(dge.tumor, modsv)
-fit<- lmFit(v,modsv)
-fit <- eBayes(fit)
-# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5705125/
-res <- decideTests(fit, p.value = 0.001) 
-summary(res)
-#Extract a table of the top-ranked genes from a linear model fit.
-tt <- topTable(fit,coef=2,  n = Inf)
-DEgenes <- rownames(tt)[tt$adj.P.Val < 0.01]
+coadse.tumor$ajcc_pathologic_tumor_stage <- gsub(x = coadse.tumor$ajcc_pathologic_tumor_stage, pattern = " ", replacement = "")
+coadse.tumor$ajcc_pathologic_tumor_stage <- droplevels(as.factor(coadse.tumor$ajcc_pathologic_tumor_stage))
+coadse.tumor$age_at_initial_pathologic_diagnosis <- droplevels(coadse.tumor$age_at_initial_pathologic_diagnosis)
+lev <- c("StageI","StageII","StageIII", "StageIV")
+f <- factor(coadse.tumor$ajcc_pathologic_tumor_stage, levels=lev)
+design <- model.matrix(~0+f , colData(coadse.tumor))
+colnames(design) <- lev
+fit1 <- lmFit(assays(coadse.tumor)$logCPM,design)
+contrast.matrix <- makeContrasts(StageI-StageII, StageI-StageIII, StageI-StageIV, StageII-StageIII, StageII-StageIV, StageIII-StageIV, levels=design)
+fit2 <- contrasts.fit(fit1, contrast.matrix)
+fit2 <- eBayes(fit2)
+tt<-topTable(fit2, coef=1, n=Inf,adjust="fdr")
+DEgenes <- rownames(tt)[tt$adj.P.Val < 0.1]
 length(DEgenes)
+tt
 ```
-The number of DE genes, the adjusted p-value of which is under the FDR threshold (0.01), is `r length(DEgenes)`.
-
-## Volcano plot 
-Lastly, we want to visualize the DE genes in a Volcano plot. We set two different thresholds: the log fold change threshold and the adjusted p-value threshold.
-
-```{r}
-EnhancedVolcano(tt,
-    lab = tt$symbol,
-    x = 'logFC',
-    y = 'adj.P.Val',
-    xlim = c(-8, 8),
-    title = 'Volcano Plot',
-    pCutoff = 10e-16,
-    FCcutoff = 3,
-    transcriptPointSize = 1.0,
-    transcriptLabSize = 3.0)
+This can be due to the fact that in many different biological contexts gene expression changes may be very little and after Multiple test adjusting no significant DE genes can be identified.
+We then decide to run a Principal Component Analysis to further explore the gene expression among the four cancer stages.
+We first need to transpose our matrix in order to have the samples as rows, if not we would get a pca analysis explaining how genes are related to each other, which in this case is not the desired output. After having prepared our data, we run the pca analyis and we can observe that the first four principal components explain respectively 11.7%, 7%, 6% and 4% of the variability. 
+```{r pca, fig.cap="PC 1 and PC 2 by cancer Stage"}
+a<-assays(coadse.tumor)
+ta<-t(assays(coadse.tumor)$logCPM)
+pca<- prcomp(ta)
+summary(pca)
+dtp <- data.frame('Stages' = coadse.tumor$ajcc_pathologic_tumor_stage, pca$x[,1:2]) # the first two componets are selected (NB: you can also select 3 for 3D plottings or 3+)
+ggplot(data = dtp) + geom_point(aes(x = PC1, y = PC2, col = Stages)) + theme_minimal() 
 ```
+In Figure @ref(fig:pca) it seems that there is no differential expression among the stages. However, we decide to proceed with the GSE Analysis. In fact, there may be small but consistent changes in gene expression values which could still imply relevant changes between the different stages.
+
 ## Session information
 
 ```{r, message=FALSE}
