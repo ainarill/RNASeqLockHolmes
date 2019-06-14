@@ -103,7 +103,6 @@ We extract the genes chromosome to look at the distribution of the differential 
 
 ```{r chrs, fig.cap="Distribution of DE genes among chromosomes"}
 genesmd <- data.frame(chr = as.character(sub("\\_.*", "", seqnames(rowRanges(coadse.filt)))), symbol = rowData(coadse.filt)[, 1], stringsAsFactors = FALSE)
-unique(genesmd$chr)
 #Extract a table of the top-ranked genes from a linear model fit.
 tt <- topTable(fit, coef = 2, n = Inf)
 fit$genes <- genesmd
@@ -136,7 +135,8 @@ We proceed to filter only those genes with FDR < 1% and a logFC > 2 (a minimum 1
 
 ```{r}
 tt.filt <- tt[tt$adj.P.Val < FDRcutoff,]  #filtering by FDR < 0.01
-all_DEgenes <- tt.filt[abs(tt.filt$logFC)>2,] # filtering by logFC > 2
+tt.filt <- tt.filt[abs(tt.filt$logFC)>2,] # filtering by logFC > 2
+all_DEgenes <- tt.filtx
 up_regulated <- all_DEgenes[which(all_DEgenes$logFC > 0),] # DE genes up regulated
 down_regulated <- all_DEgenes[which(all_DEgenes$logFC < 0),] # DE genes down regulated
 length(rownames(all_DEgenes)) # how many DE genes we have
@@ -148,10 +148,12 @@ After the filtering, the total number of DE genes is `r length(rownames(all_DEge
 In figure \@ref(fig:plotMA) we can see the distribution of the filtered DE genes.
 
 ```{r plotMA, fig.cap="MA plot of DE genes with logFC > 2 and FDR cutoff < 0.01."}
-DEgenes <- rownames(all_DEgenes)
-top7 <- order(fit$lods[, 2], decreasing = TRUE)[1:7]
+tt.filt <- tt[tt$adj.P.Val < FDRcutoff,]  #filtering by FDR < 0.01
+all_DEgenes <- tt.filt[abs(tt.filt$logFC)>2,] # filtering by logFC > 2
+DEgenes <- rownames(all_DEgenes) 
+top7 <- order(fit$lods[, 2], decreasing = TRUE)[1:7] 
 limma::plotMA(fit, coef = 2, status = rownames(fit$lods) %in% DEgenes, legend = FALSE,
-main = "Model", hl.pch = 46, hl.cex = 2, bg.pch = 46, bg.cex = 2, las = 1)
+main = "MA plot", hl.pch = 46, hl.cex = 2, bg.pch = 46, bg.cex = 2, las = 1)
 text(fit$Amean[top7], fit$coef[top7, 2], fit$genes$symbol[top7], cex = 0.5, pos = 4)
 ```
 
@@ -167,7 +169,7 @@ EnhancedVolcano(tt,
     xlim = c(-8, 8),
     title = 'Volcano Plot',
     pCutoff = 10e-16,
-    FCcutoff = 3,
+    FCcutoff = 2,
     transcriptPointSize = 1.0,
     transcriptLabSize = 3.0)
 ```

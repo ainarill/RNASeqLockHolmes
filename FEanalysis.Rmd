@@ -30,19 +30,17 @@ opts_chunk$set(cache=TRUE,
                fig.align="center",
                comment="")
 
-se.filt <- readRDS(file.path("results", "coadse.filt.rds"))
+coadse.filt <- readRDS(file.path("results", "coadse.filt.rds"))
 dge.filt <- readRDS(file.path("results", "dge.filt.rds"))
 ```
 
 # GSEA
 
-The magnitude of gene expression changes may be small and very few significant DE genes will be idenified after having adjusted for multiple testing. For this reason, we want to see if there are small but consistent changes occuring for a number of genes operating in a common pathway. We go throug this workflow by assessing DE direclty at the geneset level starting from the expression data themselves. We approach this analysis by using the `GSEA algorithm`.
-
-##coment: The idea of GSEA algorithm is to calculate for each gene an Enrichment Score (ES) as function of the changes in gene expression by the genes forming the gene set. The genes are ranked by a moderated T-statis, to see which genes have more or less DE. The ES is representative of the enrichment of those genes in the ranking. Thus, we finally compare gene sets according to the ES (non-parametric test).
+The magnitude of gene expression changes may be small and very few significant DE genes will be idenified after having adjusted for multiple testing. For this reason, we want to see if there are small but consistent changes occuring for a number of genes operating in a common pathway. We go throug this workflow by assessing DE genes direclty at the geneset level, starting from the expression data themselves. We approach this analysis by using the `GSEA algorithm`.
 
 ## Preparation
 
-To start with the GSEA, we start putting our expression data and the collection of gene sets from the GSVA[http://www.bioconductor.org/packages/release/data/experiment/html/GSVAdata.html] dataset `c2BroadSets` in a `GeneSetCollection` object.
+To start with the GSEA, we start putting our expression data and the collection of gene sets from the GSVA[http://www.bioconductor.org/packages/release/data/experiment/html/GSVAdata.html] dataset `c2BroadSets` in a `GeneSetCollection` object, as it contains curated gene sets, suggesting a good set representation for biological data analysis.
 
 ```{r}
 # collect gene sets
@@ -64,7 +62,7 @@ length(gsc)
 
 Now we can start our GSEA analysis, using the algorithm refered as *simple GSEA* (Irizarry et al. (2009)[https://journals.sagepub.com/doi/abs/10.1177/0962280209351908]). 
 
-First, we need to map the identifiers from the gene sets to the identifiers of the data we are going to analyze. Furthermore, we create an incidence matrix which indicates which genes belong to what gene set.
+First, we need to map the identifiers from the gene sets to the identifiers of the data we are going to analyze. Furthermore, we create an incidence matrix (Im) which indicates which genes belong to what gene set.
 
 ```{r}
 gsc <- mapIdentifiers(gsc, AnnoOrEntrezIdentifier(metadata(coadse.filt)$annotation))
@@ -75,10 +73,10 @@ Im[1:2, 1:10]
 ```
 We can see that several genes are present in more than one gene set, so later on we are going to go through overlaped gen sets.
 
-Once done it, the following step will be discard those genes that do not form part of our data and also discard all genes in our data that are not annotated to gene sets.
+Once done it, the following step will be discard those genes that do not form part of our data, and also discard all genes in our data that are not annotated to gene sets.
 
 ```{r}
-Im <- Im[, colnames(Im) %in% rownames(coadse.filt)]
+Im <- Im[, colnames(Im) %in% rownames(all_DEgenes)]
 dim(Im)
 coadse.filt <- coadse.filt[colnames(Im), ]
 dim(coadse.filt)
@@ -86,41 +84,43 @@ dge.filt <- dge.filt[colnames(Im),]
 dim(dge.filt)
 ```
 
-As a result we have discarted almost **2600** genes that didn't belong to our data.
+As a result we have discarted almost **6400** genes that didn't belong to our data.
 
-In order to have a sizeable list of DE genes we are going to perform a *Gene Set Enrichment Analysis* to introduce a method for pathway analysis assessing DE directly at gene set level.
-# Ups! Creo que lo que evitamos haciendo GSEA justamente es hacer una sizeable list of DE genes, tal y como lo entiendo.
+## Simple GSEA 
 
-## DE genes
+In order to determine whether an *a priori* defined set of genes shows statistically significant differences between tumor vs normal phenotypes, we are going to perform a *Gene Set Enrichment Analysis* to introduce a method for pathway analysis assessing DE directly at gene set level.
 
-The main scope of the GSEA approach is to detect consistent and robust changes in expression within a gene set. To do so, we calculate the Enrichment Score (ES) as a z-score that may allow us to detect significantly those esmpented changes.
+The main scope of the GSEA approach is, as mentioned, to detect consistent and robust changes in expression within a gene set. To do so, we calculate the Enrichment Score (ES) as a z-score that may allow us to detect significantly those esmpented changes.
 
-We decided to filter out the genesets that contain less than 10 genes. In fact, very small gene sets may induce little reliability and increase type 1 errors. Then we also calculate the zs statistic score.
+We decided to filter out the genesets that contain less than 10 genes. In fact, very small gene sets may induce little reliability and increase type I errors (false positives). Then we also calculate the z-score.
 
 ```{r}
-Im <- Im[rowSums(Im) >= 10, ]
-tGSgenes <- tt[match(colnames(Im), rownames(tt)), "t"]
-zS <- sqrt(rowSums(Im)) * (as.vector(Im %*% tGSgenes)/rowSums(Im))
+Im <- Im[rowSums(Im) >= 5, ]
+tGSgenes <- all_DEgenes[match(colnames(Im), rownames(all_DEgenes)), "t"] # calculate all t-statistics for genes in each gene set
+zS <- sqrt(rowSums(Im)) * (as.vector(Im %*% tGSgenes)/rowSums(Im)) # calculating Zscore statistic
 length(zS)
-head(zS)
+head(zS, n=10)
 ```
 
-The incidence matrix after the filtering has lost 1000 gene sets approximately.
+The incidence matrix after the filtering has lost 200 gene sets approximately.
+As we can see, know we have 618 pathways that contain a total of 4174 genes. 
 
 ```{r qqplot, fig.cap= "Q-Q Plot of gene set Z-scores"}
 qqnorm(zS)
 abline(0,1)
 ```
 
-As we can observe in the Q-Q plot of figure \@ref(fig:qqplot) we can detect that the gene sets Z-scores do not follow a normal distribution which indicates a promising number of DE gene sets.
-Just to have an overview we show the gene sets with the largest Z-scores.
+As we can observe in the Q-Q plot of figure \@ref(fig:qqplot) we can detect that the gene sets Z-scores do not follow a normal distribution (expected but the null hypothesis of no DE gene sets), which indicates a promising number of DE gene sets.
+
+Just to have an overview we rank the gene sets according to  Z-scores, and show in decreasing order.
 
 ```{r}
 rnkGS <- sort(abs(zS), decreasing = TRUE)
-head(rnkGS)
+head(rnkGS, n=10)
 ```
 
-Let's define a function called ´plotGS´ to produce a scatter plot, for a given gene set, of the mean expression values comparing Tumor vs Normal phenotypes.
+
+Let's define a function called `plotGS` to produce a scatter plot, for a given gene set, of the mean expression values comparing Tumor vs Normal phenotypes.
 
 ```{r}
 plotGS <- function(se, gs, pheno, ...) {
@@ -136,17 +136,8 @@ abline(a = 0, b = 1, lwd = 2, col = "red")
 }
 ```
 
-```{r plotGS, fig.cap= "Mean expression values per gene, tumor vs normal"}
-genesGS1 <- colnames(Im)[which(Im[names(rnkGS)[1], ] == 1)]
-genesGS2 <- colnames(Im)[which(Im[names(rnkGS)[2], ] == 1)]
-par(mfrow = c(1, 2), mar = c(4, 5, 3, 4))
-plotGS(coadse.filt, genesGS1, "type", main = names(rnkGS)[1], cex.lab = 2, las = 1)
-plotGS(coadse.filt, genesGS2, "type", main = names(rnkGS)[2], cex.lab = 2, las = 1)
-```
 
-As we can see in the plot \@ref(fig:plotGS) the Z-score allow us to identify those genes that are DE in one phenotype, respect to the other.
-
-We perform one sample z-test and we compute the number of DE gene sets according to the adjusted p-value with and FDR of 1%.
+We perform one sample z-test and compute the number of DE gene sets according to the adjusted p-value with and FDR of 1%.
 
 ```{r}
 pv <- pmin(pnorm(zS), 1 - pnorm(zS))
@@ -154,8 +145,9 @@ sum(pv < 0.05)
 pvadj <- p.adjust(pv, method = "fdr")
 DEgs <- names(pvadj)[which(pvadj < 0.01)]
 length(DEgs)
-head(DEgs, n = 3)
+head(DEgs, n = 10)
 ```
+After filtering by *adjusted p value* we obtained a total of 516 gene sets. 
 
 As mentioned before, since gene sets can overlap, we need to take that into account before interpreting the DE gene sets. In order to do so, we use the function `computeGeneSetsOverlap` which calculates an overlap index. Then, we are going to build a table ranking of pairs of gene sets by overlaps.
 
@@ -171,79 +163,58 @@ sum(rnkOv$ov == 1)
 ## how many pairs of gene sets share less than 5% of the genes?
 sum(rnkOv$ov < 0.05)
 ```
-There are `r sum(rnkOv$ov == 1)` pairs of gene sets that are identical, and `r sum(rnkOv$ov < 0.05)` that share less than 5% of the genes.
+There are `r sum(rnkOv$ov == 1)` pairs of gene sets that are identical, and `r sum(rnkOv$ov < 0.05)` pairs that share less than 5% of the genes.
 
-If half of the genes are upregulated and the other half down-regulated, the mean shift we have calculated cancels out. This is known as a change in scale, and to detect such a change one should used this other X2-score:
+If half of the genes are upregulated and the other half down-regulated, the mean shift we have calculated cancels out. This is known as a change in scale, and to detect such a change one should used this other X^2-score:
 
 ```{r}
 xS <- applyByCategory(tGSgenes, Im, function(x) (sum((x - mean(x))^2) - (length(x) - 1))/(2 * 
 (length(x) - 1)))
+xS
 ```
 
 As we did with the z-test, we are going to compute p-values and adjust them to 1% FDR for gene sets with more than about 20 genes:
 
 ```{r}
 rnkGS <- sort(abs(xS), decreasing = TRUE)
-head(rnkGS)
+head(rnkGS, n=20)
 pv <- pmin(pnorm(xS), 1 - pnorm(xS))
 pvadj <- p.adjust(pv)
 DEgsByScale <- names(pvadj)[which(pvadj < 0.01)]
+head(setdiff(DEgsByScale, DEgs), n=5)
 length(DEgsByScale)
 length(intersect(DEgs, DEgsByScale))
-setdiff(DEgsByScale, DEgs)
 ```
 
-These are the top 3 gene sets selected by the χ2-score test:
-```{r}
+These are the top 6 gene sets selected by the χ2-score test:
+```{r scatter_plot, fig.align = 'center'}
 topgs1genes <- colnames(Im)[which(Im[names(rnkGS)[1], ] == 1)]
-topgs2genes <- colnames(Im)[which(Im[names(rnkGS)[2], ] == 1)]
+genesGS1 <- rowData(coadse.filt)[topgs1genes,1]
+genesGS1
+  topgs2genes <- colnames(Im)[which(Im[names(rnkGS)[2], ] == 1)]
+genesGS2 <- rowData(coadse.filt)[topgs2genes,1]
 topgs3genes <- colnames(Im)[which(Im[names(rnkGS)[3], ] == 1)]
-par(mfrow = c(1, 3))
-plotGS(coadse.filt, topgs1genes, "type", main = names(rnkGS)[1], cex.lab = 2, las = 1)
-plotGS(coadse.filt, topgs2genes, "type", main = names(rnkGS)[2], cex.lab = 2, las = 1)
-plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[3], cex.lab = 2, las = 1)
+genesGS3 <- rowData(coadse.filt)[topgs3genes,1]
+topgs4genes <- colnames(Im)[which(Im[names(rnkGS)[4], ] == 1)]
+genesGS4 <- rowData(coadse.filt)[topgs4genes,1]
+topgs5genes <- colnames(Im)[which(Im[names(rnkGS)[5], ] == 1)]
+genesGS5 <- rowData(coadse.filt)[topgs5genes,1]
+topgs6genes <- colnames(Im)[which(Im[names(rnkGS)[6], ] == 1)]
+genesGS6 <- rowData(coadse.filt)[topgs6genes,1]
+par(mfrow = c(2, 3), mar= c(0.5,5,2,0.5), mai=c(0.5,0.6,0.6,0.5))
+plotGS(coadse.filt, topgs1genes, "type", main = names(rnkGS)[1],cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, topgs2genes, "type", main = names(rnkGS)[2],cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[3],cex.main = 0.8, cex.lab = 2, las = 1)
+plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[4],cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[5],cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[6],cex.main = 0.7, cex.lab = 2, las = 1)
+
 ```
 
-#############################
+As we can see in \@ref(fig:scatter_plot), there are represented the 6 gene sets with a higher χ2-score. 
 
-Now, we are going to calculate ES independently of any phenotype and for each sample using a GSEA method unsupervised and single-sample.
-For that, we are going to obtain an expression data matrix with the same number of samples but instead of genes, with gene sets and, instead of gene expression values, ES that are sample-wise gene-level summaries of expression to use them as gene expression values.
 
-```{r}
-GSexpr <- gsva(assays(coadse.filt)$logCPM, gsc,
-min.sz=5, max.sz=300, verbose=FALSE)
-class(GSexpr)
-dim(GSexpr)
-```
-.############ HERE I DONT UNDERSTAND 
 
-```{r}
-svaobj <- sva(GSexpr, mod, mod0)
-modSVs <- cbind(mod, svaobj$sv)
-corfit <- duplicateCorrelation(GSexpr, modSVs) ## blocking variable??
-fit <- lmFit(GSexpr, modSVs, correlation = corfit$consensus)
-fit <- eBayes(fit)
-tt <- topTable(fit, coef = 2, n = Inf)
-DEgs <- rownames(tt[tt$adj.P.Val < 0.01, , drop = FALSE])
-DEgs
-```
-So, we have 114 gene sets with type-specific expression appearing to be called DE at 1% FDR.
-To see how they are differential expressed, we are going to plot two of them:
-
-```{r}
-#par(mfrow = c(1, 2))
-boxplot(GSexpr["KEGG_ADIPOCYTOKINE_SIGNALING_PATHWAY", ] ~ coadse.filt$type, main = "KEGG_ADIPOCYTOKINE_SIGNALING_PATHWAY", las = 1, cex.axis = 2)
-boxplot(GSexpr["KEGG_LONG_TERM_POTENTIATION", ] ~ coadse.filt$type, main = "KEGG_LONG_TERM_POTENTIATION", las = 1, cex.axis = 2)
-```
-```{r volc}
-plot(tt$logFC, -log10(tt$P.Value), xlab="Log2 fold-change", ylab="-log10 P-value",
-pch=".", cex=5, col=grey(0.75), cex.axis=1.2, cex.lab=1.5, las=1)
-posx <- tt[tt$adj.P.Val < 0.01, "logFC"] ; posy <- -log10(tt[tt$adj.P.Val < 0.01, "P.Value"])
-points(posx, posy, pch=".", cex=5, col="red")
-text(posx, posy, rownames(tt)[tt$adj.P.Val < 0.01], pos=1)
-```
-
-The volcano plot in figure \@ref(fig:volc) points all the gene sets with type-specific genes as being differential expressed between tumor and normal.
 ## Session information
 
 ```{r, message=FALSE}
