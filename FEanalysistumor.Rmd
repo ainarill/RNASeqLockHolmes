@@ -31,38 +31,24 @@ opts_chunk$set(cache=TRUE,
 
 coadse.tumor <- readRDS(file.path("results", "coadse.tumor.filt.rds"))
 dge.tumor <- readRDS(file.path("results", "dge.tumor.filt.rds"))
+tt <- readRDS(file.path("results", "tt.rds"))
 ```
 
 # GSEA
 
-The magnitude of gene expression changes may be small and very few significant DE genes will be idenified after having adjusted for multiple testing. For this reason, we want to see if there are small but consistent changes occuring for a number of genes operating in a common pathway. We go throug this workflow by assessing DE direclty at the geneset level starting from the expression data themselves. We approach this analysis by using the `GSEA algorithm`.
+Here we ran the GSEA analysis for the tumor dataset. Same as for the DE Analysis, we decided not to explain again every step of the pipeline, which in this case were all explained in detail in the FE Analysis section of the paired dataset.
 
-##coment: The idea of GSEA algorithm is to calculate for each gene an Enrichment Score (ES) as function of the changes in gene expression by the genes forming the gene set. The genes are ranked by a moderated T-statis, to see which genes have more or less DE. The ES is representative of the enrichment of those genes in the ranking. Thus, we finally compare gene sets according to the ES (non-parametric test).
+Same as for the paired dataset, we decided to restrict our analysis to the KEGG, REACTOME and BIOCARTA genesets. We then built the incidence matrix and we only selected the genesets which are present in both our dataset and the incidence matrix.
+Furthermore, we filtered out the genesets that contain less than 5 genes.
 
-## Preparation
-
-To start with the GSEA, we start putting our expression data and the collection of gene sets from the GSVA[http://www.bioconductor.org/packages/release/data/experiment/html/GSVAdata.html] dataset `c2BroadSets` in a `GeneSetCollection` object.
-```{r}
-coadse.tumor$ajcc_pathologic_tumor_stage <- gsub(x = coadse.tumor$ajcc_pathologic_tumor_stage, pattern = " ", replacement = "")
-coadse.tumor$ajcc_pathologic_tumor_stage <- droplevels(as.factor(coadse.tumor$ajcc_pathologic_tumor_stage))
-coadse.tumor$age_at_initial_pathologic_diagnosis <- droplevels(coadse.tumor$age_at_initial_pathologic_diagnosis)
-lev <- c("StageI","StageII","StageIII", "StageIV")
-f <- factor(coadse.tumor$ajcc_pathologic_tumor_stage, levels=lev)
-design <- model.matrix(~0+f , colData(coadse.tumor))
-colnames(design) <- lev
-fit1 <- lmFit(assays(coadse.tumor)$logCPM,design)
-contrast.matrix <- makeContrasts(StageI-StageII, StageI-StageIII, StageI-StageIV, StageII-StageIII, StageII-StageIV, StageIII-StageIV, levels=design)
-fit2 <- contrasts.fit(fit1, contrast.matrix)
-fit2 <- eBayes(fit2)
-tt<-topTable(fit2, coef=1, adjust="BH")
-```
+After that, we calculated the z-scores for the genesets as well as the adjusted p-values and focus on the ones with lower p-values.
 
 ```{r}
 # collect gene sets
 data(c2BroadSets)
 gsc <- GeneSetCollection(c2BroadSets)
 gsc <- gsc[c(grep("^KEGG", names(gsc)),grep("^REACTOME", names(gsc)), grep("^BIOCARTA", names(gsc)))]
-gsc <- mapIdentifiers(gsc, AnnoOrEntrezIdentifier(metadata(coadse.filt)$annotation))
+gsc <- mapIdentifiers(gsc, AnnoOrEntrezIdentifier(metadata(coadse.tumor)$annotation))
 # Know which gene is in which geneset
 Im <- incidence(gsc)
 # Discard genes that are not in our data
@@ -73,23 +59,12 @@ dge.tumor <- dge.tumor[colnames(Im),]
 # Only select genesets of decent size
 Im <- Im[rowSums(Im) >= 5, ]
 
-Im[1:2, 1:10]
-dim(coadse.tumor)
-dim(dge.tumor)
-dim(Im)
-coadse.tumor
-top
-colnames(Im)
-rownames(tt)
-match(colnames(Im), rownames(tt))
 
 # Z SCORES
 # calc moderated test statistics
 tGSgenes <- tt[match(colnames(Im), rownames(tt)), "t"]
 # calc the z test statistic
 zS <- sqrt(rowSums(Im)) * (as.vector(Im %*% tGSgenes)/rowSums(Im))
-tGSgenes
-qqnorm(zS)
 #Look at the first few geneset
 rnkGS <- sort(abs(zS), decreasing = TRUE)
 pv <- pmin(pnorm(zS), 1 - pnorm(zS))
@@ -98,26 +73,11 @@ pvadj <- p.adjust(pv, method = "fdr")
 DEgs <- names(pvadj)[which(pvadj < 0.1)]
 length(DEgs)
 head(DEgs, n = 3)
-
-
-
-# X scores
-xS <- applyByCategory(tGSgenes, Im, function(x) (sum((x - mean(x))^2) - (length(x) - 1))/(2 * (length(x) - 1)))
-rnkGS <- sort(abs(xS), decreasing = TRUE)
-head(rnkGS)
-pv <- pmin(pnorm(xS), 1 - pnorm(xS))
-#pvadj <- p.adjust(pv)
-pv
-DEgsByScale <- names(pv)[which(pv < 0.1)]
-length(DEgsByScale)
-length(intersect(DEgs, DEgsByScale))
-setdiff(DEgsByScale, DEgs)
-topgs1genes <- colnames(Im)[which(Im[names(rnkGS)[1], ] == 1)]
-topgs2genes <- colnames(Im)[which(Im[names(rnkGS)[2], ] == 1)]
-topgs3genes <- colnames(Im)[which(Im[names(rnkGS)[3], ] == 1)]
 ```
-## Session Information
 
+
+
+## Session Information
 ```{r, message=FALSE}
 sessionInfo()
 ```

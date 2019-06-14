@@ -39,7 +39,7 @@ coadse <- readRDS(file.path("rawCounts", "seCOAD.rds"))
 
 # Quality assessment
 
-The Quality assessment for tumor data will be performed following the steps and the reasoning used in the Quality assesment for the paired data. For this reason, here we are only going to highlight the strategies that we use in a different way .
+The Quality assessment for tumor data will be performed following the steps and the reasoning used in the Quality assesment for the paired data. For this reason, here we are only going to highlight the strategies that differ from the previous pipeline.
 
 ## Subset of samples: Tumor data
 

@@ -104,12 +104,12 @@ We extract the genes chromosome to look at the distribution of the differential 
 ```{r chrs, fig.cap="Distribution of DE genes among chromosomes"}
 genesmd <- data.frame(chr = as.character(sub("\\_.*", "", seqnames(rowRanges(coadse.filt)))), symbol = rowData(coadse.filt)[, 1], stringsAsFactors = FALSE)
 #Extract a table of the top-ranked genes from a linear model fit.
-tt <- topTable(fit, coef = 2, n = Inf)
 fit$genes <- genesmd
+tt <- topTable(fit, coef = 2, n = Inf)
 genes<-table(as.character(sub("\\chr*", "",tt$chr[tt$adj.P.Val < FDRcutoff])))
 par(las=2) # make label text perpendicular to axis
 par(mar=c(5,8,4,2)) # increase y-axis margin.
-genes
+genesmd
 names.arg=c("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","X","Y")
 barplot(genes,  cex.names=0.7, names.arg = names.arg, col=rgb(0.7, 0.1, 0.3))
 sort(table(tt$chr[tt$adj.P.Val < FDRcutoff]), decreasing = TRUE)
@@ -136,7 +136,7 @@ We proceed to filter only those genes with FDR < 1% and a logFC > 2 (a minimum 1
 ```{r}
 tt.filt <- tt[tt$adj.P.Val < FDRcutoff,]  #filtering by FDR < 0.01
 tt.filt <- tt.filt[abs(tt.filt$logFC)>2,] # filtering by logFC > 2
-all_DEgenes <- tt.filtx
+all_DEgenes <- tt.filt
 up_regulated <- all_DEgenes[which(all_DEgenes$logFC > 0),] # DE genes up regulated
 down_regulated <- all_DEgenes[which(all_DEgenes$logFC < 0),] # DE genes down regulated
 length(rownames(all_DEgenes)) # how many DE genes we have
@@ -145,17 +145,16 @@ length(rownames(down_regulated)) # Down-reg DE
 ```
 After the filtering, the total number of DE genes is `r length(rownames(all_DEgenes))`, from which `r length(rownames(up_regulated))` are up regulated and `r length(rownames(down_regulated))` are down regulated.
 
-In figure \@ref(fig:plotMA) we can see the distribution of the filtered DE genes.
-
 ```{r plotMA, fig.cap="MA plot of DE genes with logFC > 2 and FDR cutoff < 0.01."}
 tt.filt <- tt[tt$adj.P.Val < FDRcutoff,]  #filtering by FDR < 0.01
 all_DEgenes <- tt.filt[abs(tt.filt$logFC)>2,] # filtering by logFC > 2
 DEgenes <- rownames(all_DEgenes) 
-top7 <- order(fit$lods[, 2], decreasing = TRUE)[1:7] 
 limma::plotMA(fit, coef = 2, status = rownames(fit$lods) %in% DEgenes, legend = FALSE,
 main = "MA plot", hl.pch = 46, hl.cex = 2, bg.pch = 46, bg.cex = 2, las = 1)
-text(fit$Amean[top7], fit$coef[top7, 2], fit$genes$symbol[top7], cex = 0.5, pos = 4)
+legend("bottomright", c("DE genes", "Not DE genes"), fill = c("red", "black"), inset = 0.01)
+saveRDS(all_DEgenes , file.path("results", "alldegenes.rds"))
 ```
+In figure \@ref(fig:plotMA) we can see the distribution of the filtered DE genes. One reassuring thing here is that the dots are centered around the value zero which indicates that there are not expression-level dependent biases.
 
 ## Volcano plot 
 

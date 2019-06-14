@@ -35,9 +35,9 @@ dge.tumor <- readRDS(file.path("results", "dge.tumor.filt.rds"))
 # Differential expression
 
 After having filtered and normalized our tumor dataset, we looked for differential expression of genes among the cancer stages.
-We applied a limma voom pipeline, whose steps are explained in depth already in the paired DEanalysis section, so in this section we only focus on the differences.
-Since the tumor stage has 4 different values, we decide to use a model with no intercept and a contrast matrix.
-After having obtained the model, we applied eBayes. After multiple test adjusting, we are left with no DE genes. 
+We applied a limma voom pipeline, the steps of which are explained in depth already in the paired DEanalysis section and for this reason here we only focus on the steps that differ in the new one.
+Since the tumor stage has 4 different values ("StageI","StageII","StageIII", "StageIV""), we decide to use a model with no intercept and a contrast matrix instead, following the instruction of the "Several groups" section of the [limma user guide](http://www.bioconductor.org/packages/devel/bioc/vignettes/limma/inst/doc/usersguide.pdf).
+After having obtained the model with the help of the contrast matrix, we applied eBayes. After multiple test adjusting, we are left with no DE genes. 
 ```{r}
 coadse.tumor$ajcc_pathologic_tumor_stage <- gsub(x = coadse.tumor$ajcc_pathologic_tumor_stage, pattern = " ", replacement = "")
 coadse.tumor$ajcc_pathologic_tumor_stage <- droplevels(as.factor(coadse.tumor$ajcc_pathologic_tumor_stage))
@@ -53,11 +53,11 @@ fit2 <- eBayes(fit2)
 tt<-topTable(fit2, coef=1, n=Inf,adjust="fdr")
 DEgenes <- rownames(tt)[tt$adj.P.Val < 0.1]
 length(DEgenes)
-tt
+saveRDS(tt, file.path("results", "tt.rds"))
 ```
 This can be due to the fact that in many different biological contexts gene expression changes may be very little and after Multiple test adjusting no significant DE genes can be identified.
 We then decide to run a Principal Component Analysis to further explore the gene expression among the four cancer stages.
-We first need to transpose our matrix in order to have the samples as rows, if not we would get a pca analysis explaining how genes are related to each other, which in this case is not the desired output. After having prepared our data, we run the pca analyis and we can observe that the first four principal components explain respectively 11.7%, 7%, 6% and 4% of the variability. 
+Since we use the prcomp() function, we first need to transpose our matrix in order to have the samples as rows, if not we would get a pca analysis explaining how genes are related to each other, which in this case is not the desired output. After having prepared our data, we run the pca analyis and we can observe that the first four principal components explain respectively 11.7%, 7%, 6% and 4% of the variability. 
 ```{r pca, fig.cap="PC 1 and PC 2 by cancer Stage"}
 a<-assays(coadse.tumor)
 ta<-t(assays(coadse.tumor)$logCPM)

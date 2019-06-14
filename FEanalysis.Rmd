@@ -32,6 +32,7 @@ opts_chunk$set(cache=TRUE,
 
 coadse.filt <- readRDS(file.path("results", "coadse.filt.rds"))
 dge.filt <- readRDS(file.path("results", "dge.filt.rds"))
+all_DEgenes <- readRDS(file.path("results", "alldegenes.rds"))
 ```
 
 # GSEA
@@ -186,8 +187,8 @@ length(DEgsByScale)
 length(intersect(DEgs, DEgsByScale))
 ```
 
-These are the top 6 gene sets selected by the χ2-score test:
-```{r scatter_plot, fig.align = 'center'}
+These are the top 6 gene sets selected by the ChiSquared-score test:
+```{r scatter_plot, fig.cap="Scatter plots", fig.align = 'center'}
 topgs1genes <- colnames(Im)[which(Im[names(rnkGS)[1], ] == 1)]
 genesGS1 <- rowData(coadse.filt)[topgs1genes,1]
 genesGS1
@@ -211,7 +212,7 @@ plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[6],cex.main = 0.7, 
 
 ```
 
-As we can see in \@ref(fig:scatter_plot), there are represented the 6 gene sets with a higher χ2-score. 
+As we can see in \@ref(fig:scatter_plot), there are represented the 6 gene sets with a higher ChiSquared-score. 
 
 
 
