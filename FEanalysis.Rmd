@@ -32,6 +32,7 @@ opts_chunk$set(cache=TRUE,
 
 coadse.filt <- readRDS(file.path("results", "coadse.filt.rds"))
 dge.filt <- readRDS(file.path("results", "dge.filt.rds"))
+all_DEgenes <- readRDS(file.path("results", "alldegenes.rds"))
 ```
 
 # GSEA
@@ -163,29 +164,23 @@ Now, we plot the mean expression values per gene for 6 of the above mentioned pa
 ```{r scatter_plot1, fig.align = 'center'}
 top1G <- colnames(Im)[which(Im[names(rnkGS_Z)[1], ] == 1)]
 genesGS1 <- rowData(coadse.filt)[top1G,1] # to know the gene symbol
-genesGS1
 top2G <- colnames(Im)[which(Im[names(rnkGS_Z)[9], ] == 1)]
 genesGS2 <- rowData(coadse.filt)[top2G,1]
-genesGS2
 top3G <- colnames(Im)[which(Im[names(rnkGS_Z)[15], ] == 1)]
 genesGS3 <- rowData(coadse.filt)[top3G,1]
-genesGS3
 top4G <- colnames(Im)[which(Im[names(rnkGS_Z)[3], ] == 1)]
 genesGS4 <- rowData(coadse.filt)[top4G,1]
-genesGS4
 top5G <- colnames(Im)[which(Im[names(rnkGS_Z)[10], ] == 1)]
 genesGS5 <- rowData(coadse.filt)[top5G,1]
-genesGS5
 top6G <- colnames(Im)[which(Im[names(rnkGS_Z)[37], ] == 1)]
 genesGS6 <- rowData(coadse.filt)[top6G,1]
-genesGS6
 par(mfrow = c(2, 3), mar= c(0.5,5,2,0.5), mai=c(0.5,0.6,0.6,0.5))
-plotGS(coadse.filt, top1G, "type", main = names(rnkGS_Z)[1], cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, top2G, "type", main = names(rnkGS_Z)[9], cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, top3G, "type", main = names(rnkGS_Z)[15], cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, top4G, "type", main = names(rnkGS_Z)[3], cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, top5G, "type", main = names(rnkGS_Z)[10], cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, top6G, "type", main = names(rnkGS_Z)[37], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top1G, "type", dge.filt, main = names(rnkGS_Z)[1], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top2G, "type", dge.filt, main = names(rnkGS_Z)[9], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top3G, "type", dge.filt, main = names(rnkGS_Z)[15], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top4G, "type", dge.filt, main = names(rnkGS_Z)[3], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top5G, "type", dge.filt, main = names(rnkGS_Z)[10], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top6G, "type", dge.filt, main = names(rnkGS_Z)[37], cex.main = 0.7, cex.lab = 2, las = 1)
 ```
 
 We can see in figure \@ref(fig:scatter_plot1) that, in general, the distribution of the genes in these gene sets are mainly down-regulated in tumor cases respect to normal.
