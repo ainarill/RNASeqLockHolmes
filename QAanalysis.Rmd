@@ -279,7 +279,7 @@ saveRDS(dge.filt, file.path("results", "dge.filt.rds"))
 ## MA-plots
 
 We now want to visualize the expression profiles of the normalized data. As we did previously, we opted for a subdivision of the dataset in the tumor and normal subsets.
-```{r maPlotsTumor, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples."}
+```{r maPlotsTumor, fig.height=30, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples."}
 par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
 setmp <- coadse.filt[, coadse.filt$type == "tumor"]
 dgetmp <- dge.filt[, coadse.filt$type == "tumor"]
@@ -296,7 +296,7 @@ for (i in 1:ncol(setmp)) {
 ```
 In Figure \@ref(fig:maPlotsTumor) we observe the MA-plots for the Tumor samples subset. We can see that even after the between and within normalization steps, we still have some artifacts in our data as we can observe for example in \@ref(fig:maPlotsTumor) B, E, F, J, Z, AI, and AD. 
 
-```{r maPlotsNormal, fig.height=32, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the control samples."}
+```{r maPlotsNormal, fig.height=30, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the control samples."}
 par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
 setmp <- coadse.filt[, coadse.filt$type == "normal"]
 dgetmp <- dge.filt[, coadse.filt$type == "normal"]

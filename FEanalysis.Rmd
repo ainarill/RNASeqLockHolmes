@@ -124,7 +124,7 @@ head(rnkGS, n=10)
 Let's define a function called `plotGS` to produce a scatter plot, for a given gene set, of the mean expression values comparing Tumor vs Normal phenotypes.
 
 ```{r}
-plotGS <- function(se, gs, pheno, ...) {
+plotGS <- function(se, gs, pheno,dge, ...) {
 l <- levels(colData(se)[, pheno])
 idxSamples1 <- colData(se)[, pheno] == l[1]
 idxSamples2 <- colData(se)[, pheno] == l[2]
@@ -134,6 +134,8 @@ rng <- range(c(exps1, exps2))
 plot(exps1, exps2, pch = 21, col = "black", bg = "black", xlim = rng, ylim = rng,
 xlab = l[1], ylab = l[2], ...)
 abline(a = 0, b = 1, lwd = 2, col = "red")
+nn<-dge[rownames(dge$genes) %in% gs,]$genes$symbol
+text(exps1, exps2, labels = nn, cex = 0.8, pos=2)
 }
 ```
 
@@ -190,9 +192,10 @@ length(intersect(DEgs, DEgsByScale))
 These are the top 6 gene sets selected by the ChiSquared-score test:
 ```{r scatter_plot, fig.cap="Scatter plots", fig.align = 'center'}
 topgs1genes <- colnames(Im)[which(Im[names(rnkGS)[1], ] == 1)]
+genesGS2
 genesGS1 <- rowData(coadse.filt)[topgs1genes,1]
-genesGS1
-  topgs2genes <- colnames(Im)[which(Im[names(rnkGS)[2], ] == 1)]
+topgs2genes <- colnames(Im)[which(Im[names(rnkGS)[2], ] == 1)]
+topgs4genes
 genesGS2 <- rowData(coadse.filt)[topgs2genes,1]
 topgs3genes <- colnames(Im)[which(Im[names(rnkGS)[3], ] == 1)]
 genesGS3 <- rowData(coadse.filt)[topgs3genes,1]
@@ -203,12 +206,12 @@ genesGS5 <- rowData(coadse.filt)[topgs5genes,1]
 topgs6genes <- colnames(Im)[which(Im[names(rnkGS)[6], ] == 1)]
 genesGS6 <- rowData(coadse.filt)[topgs6genes,1]
 par(mfrow = c(2, 3), mar= c(0.5,5,2,0.5), mai=c(0.5,0.6,0.6,0.5))
-plotGS(coadse.filt, topgs1genes, "type", main = names(rnkGS)[1],cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, topgs2genes, "type", main = names(rnkGS)[2],cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[3],cex.main = 0.8, cex.lab = 2, las = 1)
-plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[4],cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[5],cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[6],cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, topgs1genes, "type", dge.filt,  main = names(rnkGS)[1],cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, topgs2genes, "type", dge.filt, main = names(rnkGS)[2],cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, topgs3genes, "type", dge.filt, main = names(rnkGS)[3],cex.main = 0.8, cex.lab = 2, las = 1)
+plotGS(coadse.filt, topgs4genes, "type", dge.filt, main = names(rnkGS)[4],cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, topgs5genes, "type", dge.filt, main = names(rnkGS)[5],cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, topgs6genes, "type", dge.filt, main = names(rnkGS)[6],cex.main = 0.7, cex.lab = 2, las = 1)
 
 ```
 
