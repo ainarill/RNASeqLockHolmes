@@ -218,53 +218,57 @@ saveRDS(dge.tumor.filt, file.path("results", "dge.tumor.filt.rds"))
 We now want to visualize the expression profiles of the normalized data for each tumor stage. 
 
 For Stage I --> 
-```{r maPlotsTumor1, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage I."}
+```{r maPlotsTumor1, fig.height=45, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage I."}
 Stage1 <- coadse.tumor.filt[, coadse.tumor.filt$ajcc_pathologic_tumor_stage == "Stage I"]
-par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
+par(mfrow=c(24, 3), mar=c(1, 5, 3, 1))
+lettersext <- c(LETTERS, sapply(LETTERS, function(x) paste0(x, LETTERS)))
 for (i in 1:ncol(Stage1)) {
 A <- rowMeans(assays(Stage1)$logCPM) 
 M <- assays(Stage1)$logCPM[, i] - A
-smoothScatter(A, M, main=colnames(Stage1)[i], las=1, cex.axis=1, cex.lab=1.2, cex.main=1)
+smoothScatter(A, M, main=paste(lettersext[i], colnames(Stage1)[i], sep=") ", collapse=NULL), las=1)
 abline(h=0, col="blue", lwd=2) ; lo <- lowess(M ~ A) ; lines(lo$x, lo$y, col="red", lwd=2)
 }
 ```
+In Figure \@ref(fig:maPlotsTumor1) we observe the MA-plots for the Tumor samples of stage I. We can see that even after the between and within normalization steps, we still have some artifacts in our data as we can observe for example in \@ref(fig:maPlotsTumor1) A, C, F, AH and AT.
 
 For Stage II --> 
-```{r maPlotsTumor2, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage II."}
+```{r maPlotsTumor2, fig.height=85, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage II."}
 Stage2 <- coadse.tumor.filt[, coadse.tumor.filt$ajcc_pathologic_tumor_stage == "Stage II"]
-par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
+par(mfrow=c(53, 3), mar=c(1, 5, 3, 1))
 for (i in 1:ncol(Stage2)) {
 A <- rowMeans(assays(Stage2)$logCPM) 
 M <- assays(Stage2)$logCPM[, i] - A
-smoothScatter(A, M, main=colnames(Stage2)[i], las=1, cex.axis=1, cex.lab=1.2, cex.main=1)
+smoothScatter(A, M, main=paste(lettersext[i], colnames(Stage2)[i], sep=") ", collapse=NULL), las=1)
 abline(h=0, col="blue", lwd=2) ; lo <- lowess(M ~ A) ; lines(lo$x, lo$y, col="red", lwd=2)
 }
 ```
-
+In Figure \@ref(fig:maPlotsTumor2) we observe the MA-plots for the Tumor samples of stage II. We can see that the majority of MA plots tend to follow the blue line with some exceptions like Figure \@ref(fig:maPlotsTumor2) B, E, F, N, AO, DM, DR, EI and EX.
 
 For Stage III --> 
-```{r maPlotsTumor3, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage III."}
+```{r maPlotsTumor3, fig.height=80, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage III."}
 Stage3 <- coadse.tumor.filt[, coadse.tumor.filt$ajcc_pathologic_tumor_stage == "Stage III"]
-par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
+par(mfrow=c(40, 3), mar=c(4, 5, 3, 1))
 for (i in 1:ncol(Stage3)) {
 A <- rowMeans(assays(Stage3)$logCPM) 
 M <- assays(Stage3)$logCPM[, i] - A
-smoothScatter(A, M, main=colnames(Stage3)[i], las=1, cex.axis=1, cex.lab=1.2, cex.main=1)
+smoothScatter(A, M, main=paste(lettersext[i], colnames(Stage3)[i], sep=") ", collapse=NULL), las=1)
 abline(h=0, col="blue", lwd=2) ; lo <- lowess(M ~ A) ; lines(lo$x, lo$y, col="red", lwd=2)
 }
 ```
+In Figure \@ref(fig:maPlotsTumor3) we observe the MA-plots for the Tumor samples of stage III. With the samples of stage III we see a similar situation compared to the previous MA-plots; we can see that the red line of the majority of plots tends to follow the blue line with some exceptions like Figure \@ref(fig:maPlotsTumor3) J, K, AV, BB, BC, CT and DN.
 
 For Stage IV --> 
-```{r maPlotsTumor4, fig.height=36, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage IV."}
+```{r maPlotsTumor4, fig.height=45, fig.width=6, dpi=100, echo=FALSE, fig.cap="MA-plots of the tumor samples in Stage IV."}
 Stage4 <- coadse.tumor.filt[, coadse.tumor.filt$ajcc_pathologic_tumor_stage == "Stage IV"]
-par(mfrow=c(15, 3), mar=c(4, 5, 3, 1))
+par(mfrow=c(20, 3), mar=c(4, 5, 3, 1))
 for (i in 1:ncol(Stage4)) {
 A <- rowMeans(assays(Stage4)$logCPM) 
 M <- assays(Stage4)$logCPM[, i] - A
-smoothScatter(A, M, main=colnames(Stage4)[i], las=1, cex.axis=1, cex.lab=1.2, cex.main=1)
+smoothScatter(A, M, main=paste(lettersext[i], colnames(Stage4)[i], sep=") ", collapse=NULL), las=1)
 abline(h=0, col="blue", lwd=2) ; lo <- lowess(M ~ A) ; lines(lo$x, lo$y, col="red", lwd=2)
 }
 ```
+Finally, in Figure \@ref(fig:maPlotsTumor4) we observe the MA-plots for the Tumor samples of stage IV. In this case, we observe again a similar situation; there are some plots were we can detect some artifacts, like for example J, M, V, AD, AI and AZ.
 
 ## Batch Identification for tumor data.
 
