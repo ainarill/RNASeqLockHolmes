@@ -8,7 +8,7 @@ author:
 - name: Aina Rill
   affiliation: *id
   email: aina.rill01@estudiant.upf.edu
-- name: Altaïr C. Hernández
+- name: Alta??r C. Hern??ndez
   affiliation: *id
   email: altair.chinchilla01@estudiant.upf.edu
 date: "`r format(Sys.time(), '%B %e, %Y')`"
@@ -46,6 +46,18 @@ cat(readLines("DEanalysis.knit.md"), sep="\n")
 
 ```{r echo=FALSE, results='asis'}
 cat(readLines("FEanalysis.knit.md"), sep="\n")
+```
+
+```{r echo=FALSE, results='asis'}
+cat(readLines("QAanalysisTumor.knit.md"), sep="\n")
+```
+
+```{r echo=FALSE, results='asis'}
+cat(readLines("DEanalysisTumor.knit.md"), sep="\n")
+```
+
+```{r echo=FALSE, results='asis'}
+cat(readLines("FEanalysisTumor.knit.md"), sep="\n")
 ```
 
 # References

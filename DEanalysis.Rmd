@@ -38,7 +38,7 @@ dge.filt <- readRDS(file.path("results", "dge.filt.rds"))
 After the data filtering and normalization, we are interested in identifying gene expression changes and associated p-values between tumor and control samples. For this task, we used the R/Bioconductor packages [sva](http://bioconductor.org/packages/sva) and [limma](https://bioconductor.org/packages/release/bioc/html/limma.html).
 We are adopting linear regression models, which in general are used in order to represent, in the most accurate way possible, something which is very complex. In the specific case of DE analysis, the model is used as a predictor of gene expression values. 
 For the purpose of fitting the said regression model, it is crucial to build a design matrix. The design matrix is a n x m matrix, where n is the number of samples and m is the number of coeffients which need to be estimated or the types of samples, like cases and controls.
-It needs to be defined for which factors to adjust. In our case we are working with a paired design and would consider gender as a relevant factor to adjust for. !!!!!!!!!!!
+It needs to be defined for which factors to adjust. In our case we are working with a paired design and we would have liked to adjust for gender.
 
 We decide to proceed by only adjusting for the patient id, as it is already implicitly adjusting for gender; as we are working with a paired design, gender is identical between every pair of samples, which would make reduntand to adjust for it and would create technical problems during the inversion step of the matrix in the least square algorithm steps.
 
