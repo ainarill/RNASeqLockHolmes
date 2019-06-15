@@ -60,7 +60,7 @@ gsc
 length(gsc)
 ```
 
-Now we can start our GSEA analysis, using the algorithm refered as *simple GSEA* (Irizarry et al. (2009)[https://journals.sagepub.com/doi/abs/10.1177/0962280209351908]). 
+Now we can start our GSEA analysis, using the algorithm refered as *simple GSEA* (Irizarry et al. (2009)[https://journals.sagepub.com/doi/abs/10.1177/0962280209351908]).
 
 First, we need to map the identifiers from the gene sets to the identifiers of the data we are going to analyze. Furthermore, we create an incidence matrix (Im) which indicates which genes belong to what gene set.
 
@@ -86,7 +86,7 @@ dim(dge.filt)
 
 As a result we have discarted almost **6400** genes that didn't belong to our data.
 
-## Simple GSEA 
+## Simple GSEA
 
 In order to determine whether an *a priori* defined set of genes shows statistically significant differences between tumor vs normal phenotypes, we are going to perform a *Gene Set Enrichment Analysis* to introduce a method for pathway analysis assessing DE directly at gene set level.
 
@@ -104,7 +104,7 @@ head(zS, n=10)
 ```
 
 The incidence matrix after the filtering has lost 200 gene sets approximately.
-As we can see, know we have 618 pathways that contain a total of 4174 genes. 
+As we can see, know we have 618 pathways that contain a total of 4174 genes.
 
 ```{r qqplot, fig.cap= "Q-Q Plot of gene set Z-scores"}
 qqnorm(zS)
@@ -124,7 +124,7 @@ head(rnkGS_Z, n=40)
 Let's define a function called `plotGS` to produce a scatter plot, for a given gene set, of the mean expression values comparing Tumor vs Normal phenotypes.
 
 ```{r}
-plotGS <- function(se, gs, pheno, ...) {
+plotGS <- function(se, gs, pheno,dge, ...) {
 l <- levels(colData(se)[, pheno])
 idxSamples1 <- colData(se)[, pheno] == l[1]
 idxSamples2 <- colData(se)[, pheno] == l[2]
@@ -134,7 +134,8 @@ rng <- range(c(exps1, exps2))
 plot(exps1, exps2, pch = 21, col = "black", bg = "black", xlim = rng, ylim = rng,
 xlab = l[1], ylab = l[2], ...)
 abline(a = 0, b = 1, lwd = 2, col = "red")
-text(exps1, exps2, labels = exps2, cex = 0.8)
+nn<-dge[rownames(dge$genes) %in% gs,]$genes$symbol
+text(exps1, exps2, labels = nn, cex = 0.8, pos=2)
 }
 ```
 
@@ -181,7 +182,7 @@ plotGS(coadse.filt, top5G, "type", main = names(rnkGS_Z)[10], cex.main = 0.7, ce
 plotGS(coadse.filt, top6G, "type", main = names(rnkGS_Z)[37], cex.main = 0.7, cex.lab = 2, las = 1)
 ```
 
-We can see the top6 gene sets according to the Z-score. In general the distribution of the genes in these gene sets are mainly downregulated in tumor cases respect to normal. 
+We can see the top6 gene sets according to the Z-score. In general the distribution of the genes in these gene sets are mainly downregulated in tumor cases respect to normal.
 
 From a first point of view, we can see that potentially molecular changes are done in pathways related with cell cycle (puryne and pyrimidine methabolism) and homeostasis maintaining. For instance, genes related with the Wnt signaling pathway seems to be affected, which has been related to tissue homeostasis and repair. A desregulation in Wnt pathway has been associated with the accumulation of the oncogenic protein beta-catein, and therefore, with the development of cancer[PMID: 24714764, PMID: 28413363].   
 
@@ -197,7 +198,7 @@ rnkOv <- rnkOv[order(rnkOv$ov, decreasing = TRUE), ]
 rnkOv$gs1 <- rownames(gsov)[rnkOv$gs1]
 rnkOv$gs2 <- rownames(gsov)[rnkOv$gs2]
 ## how many pairs of gene sets are identical?
-sum(rnkOv$ov == 1) 
+sum(rnkOv$ov == 1)
 ## how many pairs of gene sets share less than 5% of the genes?
 sum(rnkOv$ov < 0.05)
 ```
@@ -207,7 +208,7 @@ There are `r sum(rnkOv$ov == 1)` pairs of gene sets that are identical, and `r s
 In the case that half of the genes were upregulated and the other half down-regulated, the mean shift we have calculated would cancels out. This is known as a change in scale, and to detect such a change one should used this other X^2-score:
 
 ```{r}
-xS <- applyByCategory(tGSgenes, Im, function(x) (sum((x - mean(x))^2) - (length(x) - 1))/(2 * 
+xS <- applyByCategory(tGSgenes, Im, function(x) (sum((x - mean(x))^2) - (length(x) - 1))/(2 *
 (length(x) - 1)))
 ```
 
@@ -229,9 +230,10 @@ These are the top 6 gene sets selected by the χ2-score test:
 
 ```{r scatter_plot, fig.align = 'center'}
 topgs1genes <- colnames(Im)[which(Im[names(rnkGS)[1], ] == 1)]
+genesGS2
 genesGS1 <- rowData(coadse.filt)[topgs1genes,1]
-genesGS1
 topgs2genes <- colnames(Im)[which(Im[names(rnkGS)[2], ] == 1)]
+topgs4genes
 genesGS2 <- rowData(coadse.filt)[topgs2genes,1]
 genesGS2
 topgs3genes <- colnames(Im)[which(Im[names(rnkGS)[3], ] == 1)]
@@ -247,16 +249,16 @@ topgs6genes <- colnames(Im)[which(Im[names(rnkGS)[6], ] == 1)]
 genesGS6 <- rowData(coadse.filt)[topgs6genes,1]
 genesGS6
 par(mfrow = c(2, 3), mar= c(0.5,5,2,0.5), mai=c(0.5,0.6,0.6,0.5))
-plotGS(coadse.filt, topgs1genes, "type", main = names(rnkGS)[1],cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, topgs2genes, "type", main = names(rnkGS)[2],cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[3],cex.main = 0.8, cex.lab = 2, las = 1)
-plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[4],cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[5],cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[6],cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, topgs1genes, "type", dge.filt,  main = names(rnkGS)[1],cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, topgs2genes, "type", dge.filt, main = names(rnkGS)[2],cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, topgs3genes, "type", dge.filt, main = names(rnkGS)[3],cex.main = 0.8, cex.lab = 2, las = 1)
+plotGS(coadse.filt, topgs4genes, "type", dge.filt, main = names(rnkGS)[4],cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, topgs5genes, "type", dge.filt, main = names(rnkGS)[5],cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, topgs6genes, "type", dge.filt, main = names(rnkGS)[6],cex.main = 0.7, cex.lab = 2, las = 1)
 
 ```
 
-As we can see in \@ref(fig:scatter_plot), there are represented the 6 gene sets with a higher χ2-score. As seen in the Z-score ranking gene sets, in overall most of the genes are down regulated in the tumor group. 
+As we can see in \@ref(fig:scatter_plot), there are represented the 6 gene sets with a higher χ2-score. As seen in the Z-score ranking gene sets, in overall most of the genes are down regulated in the tumor group.
 
 
 
