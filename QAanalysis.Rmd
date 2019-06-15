@@ -313,8 +313,7 @@ for (i in 1:ncol(setmp)) {
 In Figure \@ref(fig:maPlotsNormal) we observe the MA-plots for the Control samples subset.
 !!!!!!!!!!!!!!!!!
 
-As we do not see any important expression levels biases in any of the tumor and normal samples we decide to proceed to the 
-next step of the analysis without modifying the dataset we work with.
+As we do not see any important expression levels biases in any of the tumor and normal samples we decide to proceed to the next step of the analysis without modifying the dataset we work with.
 
 
 ## Batch identification
