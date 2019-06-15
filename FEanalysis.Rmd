@@ -117,7 +117,7 @@ Just to have an overview we rank the gene sets according to  Z-scores, and show 
 
 ```{r}
 rnkGS_Z <- sort(abs(zS), decreasing = TRUE)
-head(rnkGS_Z, n=10)
+head(rnkGS_Z, n=40)
 ```
 
 
@@ -134,6 +134,7 @@ rng <- range(c(exps1, exps2))
 plot(exps1, exps2, pch = 21, col = "black", bg = "black", xlim = rng, ylim = rng,
 xlab = l[1], ylab = l[2], ...)
 abline(a = 0, b = 1, lwd = 2, col = "red")
+text(exps1, exps2, labels = exps2, cex = 0.8)
 }
 ```
 
@@ -146,42 +147,45 @@ sum(pv < 0.05)
 pvadj <- p.adjust(pv, method = "fdr")
 DEgs <- names(pvadj)[which(pvadj < 0.01)]
 length(DEgs)
-head(DEgs, n = 20)
+head(DEgs, n = 30)
 ```
 After filtering by *adjusted p value* we obtained a total of 95 gene sets.
 
+Now, we plot the mean expression values per gene for the top 6 gene sets selected by the Z-score.
+
 ```{r scatter_plot, fig.align = 'center'}
 top1G <- colnames(Im)[which(Im[names(rnkGS_Z)[1], ] == 1)]
-genesGS1 <- rowData(coadse.filt)[top1G,1]
+genesGS1 <- rowData(coadse.filt)[top1G,1] # to know the gene symbol
 genesGS1
-top2G <- colnames(Im)[which(Im[names(rnkGS_Z)[2], ] == 1)]
+top2G <- colnames(Im)[which(Im[names(rnkGS_Z)[9], ] == 1)]
 genesGS2 <- rowData(coadse.filt)[top2G,1]
 genesGS2
-top3G <- colnames(Im)[which(Im[names(rnkGS_Z)[3], ] == 1)]
+top3G <- colnames(Im)[which(Im[names(rnkGS_Z)[15], ] == 1)]
 genesGS3 <- rowData(coadse.filt)[top3G,1]
 genesGS3
-top4G <- colnames(Im)[which(Im[names(rnkGS_Z)[4], ] == 1)]
+top4G <- colnames(Im)[which(Im[names(rnkGS_Z)[3], ] == 1)]
 genesGS4 <- rowData(coadse.filt)[top4G,1]
 genesGS4
-top5G <- colnames(Im)[which(Im[names(rnkGS_Z)[5], ] == 1)]
+top5G <- colnames(Im)[which(Im[names(rnkGS_Z)[10], ] == 1)]
 genesGS5 <- rowData(coadse.filt)[top5G,1]
 genesGS5
-top6G <- colnames(Im)[which(Im[names(rnkGS_Z)[6], ] == 1)]
+top6G <- colnames(Im)[which(Im[names(rnkGS_Z)[37], ] == 1)]
 genesGS6 <- rowData(coadse.filt)[top6G,1]
 genesGS6
-
 par(mfrow = c(2, 3), mar= c(0.5,5,2,0.5), mai=c(0.5,0.6,0.6,0.5))
 plotGS(coadse.filt, top1G, "type", main = names(rnkGS_Z)[1], cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, top2G, "type", main = names(rnkGS_Z)[2], cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, top3G, "type", main = names(rnkGS_Z)[3], cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, top4G, "type", main = names(rnkGS_Z)[4], cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, top5G, "type", main = names(rnkGS_Z)[5], cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, top6G, "type", main = names(rnkGS_Z)[6], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top2G, "type", main = names(rnkGS_Z)[9], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top3G, "type", main = names(rnkGS_Z)[15], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top4G, "type", main = names(rnkGS_Z)[3], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top5G, "type", main = names(rnkGS_Z)[10], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top6G, "type", main = names(rnkGS_Z)[37], cex.main = 0.7, cex.lab = 2, las = 1)
 ```
 
-We can see the top6 gene sets according to the Z-score. In general the distribution of the genes in the gene set are mainly downregulated in tumor cases respect to normal. 
+We can see the top6 gene sets according to the Z-score. In general the distribution of the genes in these gene sets are mainly downregulated in tumor cases respect to normal. 
 
-From a first point of view 
+From a first point of view, we can see that potentially molecular changes are done in pathways related with cell cycle (puryne and pyrimidine methabolism) and homeostasis maintaining. For instance, genes related with the Wnt signaling pathway seems to be affected, which has been related to tissue homeostasis and repair. A desregulation in Wnt pathway has been associated with the accumulation of the oncogenic protein beta-catein, and therefore, with the development of cancer[PMID: 24714764, PMID: 28413363].   
+
+Another feature that can be pointed out is the downregulation of proteins related with apoptosis. For instance, downregulation in CASP7 gene (caspase 7) in tumor samples respect to normal has been associated with colon adenocarcinoma developemnt [PMID:11381362]. The Caspase signaling are well known to been associated with cell apoptosis. Thus, we could expect this gene to be down regulated, leading to the repression of apoptosis in tumoral cells.
 
 As mentioned before, since gene sets can overlap, we need to take that into account before interpreting the DE gene sets. In order to do so, we use the function `computeGeneSetsOverlap` which calculates an overlap index. Then, we are going to build a table ranking of pairs of gene sets by overlaps.
 
@@ -211,7 +215,7 @@ As we did with the z-test, we are going to compute p-values and adjust them to 1
 
 ```{r}
 rnkGS <- sort(abs(xS), decreasing = TRUE)
-head(rnkGS, n=20)
+head(rnkGS, n=40)
 pv <- pmin(pnorm(xS), 1 - pnorm(xS))
 pvadj <- p.adjust(pv)
 DEgsByScale <- names(pvadj)[which(pvadj < 0.01)]
@@ -252,7 +256,7 @@ plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[6],cex.main = 0.7, 
 
 ```
 
-As we can see in \@ref(fig:scatter_plot), there are represented the 6 gene sets with a higher χ2-score. 
+As we can see in \@ref(fig:scatter_plot), there are represented the 6 gene sets with a higher χ2-score. As seen in the Z-score ranking gene sets, in overall most of the genes are down regulated in the tumor group. 
 
 
 
