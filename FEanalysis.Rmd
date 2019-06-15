@@ -32,7 +32,6 @@ opts_chunk$set(cache=TRUE,
 
 coadse.filt <- readRDS(file.path("results", "coadse.filt.rds"))
 dge.filt <- readRDS(file.path("results", "dge.filt.rds"))
-all_DEgenes <- readRDS(file.path("results", "alldegenes.rds"))
 ```
 
 # GSEA
@@ -101,6 +100,7 @@ tGSgenes <- all_DEgenes[match(colnames(Im), rownames(all_DEgenes)), "t"] # calcu
 zS <- sqrt(rowSums(Im)) * (as.vector(Im %*% tGSgenes)/rowSums(Im)) # calculating Zscore statistic
 length(zS)
 head(zS, n=10)
+
 ```
 
 The incidence matrix after the filtering has lost 200 gene sets approximately.
@@ -116,8 +116,8 @@ As we can observe in the Q-Q plot of figure \@ref(fig:qqplot) we can detect that
 Just to have an overview we rank the gene sets according to  Z-scores, and show in decreasing order.
 
 ```{r}
-rnkGS <- sort(abs(zS), decreasing = TRUE)
-head(rnkGS, n=10)
+rnkGS_Z <- sort(abs(zS), decreasing = TRUE)
+head(rnkGS_Z, n=10)
 ```
 
 
@@ -146,9 +146,42 @@ sum(pv < 0.05)
 pvadj <- p.adjust(pv, method = "fdr")
 DEgs <- names(pvadj)[which(pvadj < 0.01)]
 length(DEgs)
-head(DEgs, n = 10)
+head(DEgs, n = 20)
 ```
-After filtering by *adjusted p value* we obtained a total of 516 gene sets. 
+After filtering by *adjusted p value* we obtained a total of 95 gene sets.
+
+```{r scatter_plot, fig.align = 'center'}
+top1G <- colnames(Im)[which(Im[names(rnkGS_Z)[1], ] == 1)]
+genesGS1 <- rowData(coadse.filt)[top1G,1]
+genesGS1
+top2G <- colnames(Im)[which(Im[names(rnkGS_Z)[2], ] == 1)]
+genesGS2 <- rowData(coadse.filt)[top2G,1]
+genesGS2
+top3G <- colnames(Im)[which(Im[names(rnkGS_Z)[3], ] == 1)]
+genesGS3 <- rowData(coadse.filt)[top3G,1]
+genesGS3
+top4G <- colnames(Im)[which(Im[names(rnkGS_Z)[4], ] == 1)]
+genesGS4 <- rowData(coadse.filt)[top4G,1]
+genesGS4
+top5G <- colnames(Im)[which(Im[names(rnkGS_Z)[5], ] == 1)]
+genesGS5 <- rowData(coadse.filt)[top5G,1]
+genesGS5
+top6G <- colnames(Im)[which(Im[names(rnkGS_Z)[6], ] == 1)]
+genesGS6 <- rowData(coadse.filt)[top6G,1]
+genesGS6
+
+par(mfrow = c(2, 3), mar= c(0.5,5,2,0.5), mai=c(0.5,0.6,0.6,0.5))
+plotGS(coadse.filt, top1G, "type", main = names(rnkGS_Z)[1], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top2G, "type", main = names(rnkGS_Z)[2], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top3G, "type", main = names(rnkGS_Z)[3], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top4G, "type", main = names(rnkGS_Z)[4], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top5G, "type", main = names(rnkGS_Z)[5], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top6G, "type", main = names(rnkGS_Z)[6], cex.main = 0.7, cex.lab = 2, las = 1)
+```
+
+We can see the top6 gene sets according to the Z-score. In general the distribution of the genes in the gene set are mainly downregulated in tumor cases respect to normal. 
+
+From a first point of view 
 
 As mentioned before, since gene sets can overlap, we need to take that into account before interpreting the DE gene sets. In order to do so, we use the function `computeGeneSetsOverlap` which calculates an overlap index. Then, we are going to build a table ranking of pairs of gene sets by overlaps.
 
@@ -164,14 +197,14 @@ sum(rnkOv$ov == 1)
 ## how many pairs of gene sets share less than 5% of the genes?
 sum(rnkOv$ov < 0.05)
 ```
+
 There are `r sum(rnkOv$ov == 1)` pairs of gene sets that are identical, and `r sum(rnkOv$ov < 0.05)` pairs that share less than 5% of the genes.
 
-If half of the genes are upregulated and the other half down-regulated, the mean shift we have calculated cancels out. This is known as a change in scale, and to detect such a change one should used this other X^2-score:
+In the case that half of the genes were upregulated and the other half down-regulated, the mean shift we have calculated would cancels out. This is known as a change in scale, and to detect such a change one should used this other X^2-score:
 
 ```{r}
 xS <- applyByCategory(tGSgenes, Im, function(x) (sum((x - mean(x))^2) - (length(x) - 1))/(2 * 
 (length(x) - 1)))
-xS
 ```
 
 As we did with the z-test, we are going to compute p-values and adjust them to 1% FDR for gene sets with more than about 20 genes:
@@ -182,26 +215,33 @@ head(rnkGS, n=20)
 pv <- pmin(pnorm(xS), 1 - pnorm(xS))
 pvadj <- p.adjust(pv)
 DEgsByScale <- names(pvadj)[which(pvadj < 0.01)]
+head(DEgsByScale, n=10)
 head(setdiff(DEgsByScale, DEgs), n=5)
 length(DEgsByScale)
 length(intersect(DEgs, DEgsByScale))
 ```
 
-These are the top 6 gene sets selected by the ChiSquared-score test:
-```{r scatter_plot, fig.cap="Scatter plots", fig.align = 'center'}
+These are the top 6 gene sets selected by the χ2-score test:
+
+```{r scatter_plot, fig.align = 'center'}
 topgs1genes <- colnames(Im)[which(Im[names(rnkGS)[1], ] == 1)]
 genesGS1 <- rowData(coadse.filt)[topgs1genes,1]
 genesGS1
-  topgs2genes <- colnames(Im)[which(Im[names(rnkGS)[2], ] == 1)]
+topgs2genes <- colnames(Im)[which(Im[names(rnkGS)[2], ] == 1)]
 genesGS2 <- rowData(coadse.filt)[topgs2genes,1]
+genesGS2
 topgs3genes <- colnames(Im)[which(Im[names(rnkGS)[3], ] == 1)]
 genesGS3 <- rowData(coadse.filt)[topgs3genes,1]
+genesGS3
 topgs4genes <- colnames(Im)[which(Im[names(rnkGS)[4], ] == 1)]
 genesGS4 <- rowData(coadse.filt)[topgs4genes,1]
+genesGS4
 topgs5genes <- colnames(Im)[which(Im[names(rnkGS)[5], ] == 1)]
 genesGS5 <- rowData(coadse.filt)[topgs5genes,1]
+genesGS5
 topgs6genes <- colnames(Im)[which(Im[names(rnkGS)[6], ] == 1)]
 genesGS6 <- rowData(coadse.filt)[topgs6genes,1]
+genesGS6
 par(mfrow = c(2, 3), mar= c(0.5,5,2,0.5), mai=c(0.5,0.6,0.6,0.5))
 plotGS(coadse.filt, topgs1genes, "type", main = names(rnkGS)[1],cex.main = 0.7, cex.lab = 2, las = 1)
 plotGS(coadse.filt, topgs2genes, "type", main = names(rnkGS)[2],cex.main = 0.7, cex.lab = 2, las = 1)
@@ -212,7 +252,7 @@ plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[6],cex.main = 0.7, 
 
 ```
 
-As we can see in \@ref(fig:scatter_plot), there are represented the 6 gene sets with a higher ChiSquared-score. 
+As we can see in \@ref(fig:scatter_plot), there are represented the 6 gene sets with a higher χ2-score. 
 
 
 
