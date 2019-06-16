@@ -140,7 +140,6 @@ text(exps1, exps2, labels = nn, cex = 0.8, pos=2)
 }
 ```
 
-
 We perform one sample z-test and compute the number of DE gene sets according to the adjusted p-value with and FDR of 1%.
 
 ```{r}
@@ -160,27 +159,30 @@ From a first point of view, we can see that potentially molecular changes are do
 Another feature that can be pointed out is the downregulation of proteins related with apoptosis. For instance, downregulation in CASP7 gene (caspase 7) in tumor samples respect to normal has been associated with colon adenocarcinoma developemnt [@alfarouk2014glycolysis]. The Caspase signaling are well known to been associated with cell apoptosis. Thus, we could expect this gene to be down regulated, leading to the repression of apoptosis in tumoral cells.
 
 Now, we plot the mean expression values per gene for 6 of the above mentioned pathways, that we consider can be interesting to  analyse.
+```{r}
+head(rnkGS_Z)
+```
 
 ```{r scatter_plot1, fig.align = 'center'}
 top1G <- colnames(Im)[which(Im[names(rnkGS_Z)[1], ] == 1)]
 genesGS1 <- rowData(coadse.filt)[top1G,1] # to know the gene symbol
-top2G <- colnames(Im)[which(Im[names(rnkGS_Z)[9], ] == 1)]
+top2G <- colnames(Im)[which(Im[names(rnkGS_Z)[2], ] == 1)]
 genesGS2 <- rowData(coadse.filt)[top2G,1]
-top3G <- colnames(Im)[which(Im[names(rnkGS_Z)[15], ] == 1)]
+top3G <- colnames(Im)[which(Im[names(rnkGS_Z)[3], ] == 1)]
 genesGS3 <- rowData(coadse.filt)[top3G,1]
-top4G <- colnames(Im)[which(Im[names(rnkGS_Z)[3], ] == 1)]
+top4G <- colnames(Im)[which(Im[names(rnkGS_Z)[4], ] == 1)]
 genesGS4 <- rowData(coadse.filt)[top4G,1]
-top5G <- colnames(Im)[which(Im[names(rnkGS_Z)[10], ] == 1)]
+top5G <- colnames(Im)[which(Im[names(rnkGS_Z)[5], ] == 1)]
 genesGS5 <- rowData(coadse.filt)[top5G,1]
-top6G <- colnames(Im)[which(Im[names(rnkGS_Z)[37], ] == 1)]
+top6G <- colnames(Im)[which(Im[names(rnkGS_Z)[6], ] == 1)]
 genesGS6 <- rowData(coadse.filt)[top6G,1]
 par(mfrow = c(2, 3), mar= c(0.5,5,2,0.5), mai=c(0.5,0.6,0.6,0.5))
 plotGS(coadse.filt, top1G, "type", dge.filt, main = names(rnkGS_Z)[1], cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, top2G, "type", dge.filt, main = names(rnkGS_Z)[9], cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, top3G, "type", dge.filt, main = names(rnkGS_Z)[15], cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, top4G, "type", dge.filt, main = names(rnkGS_Z)[3], cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, top5G, "type", dge.filt, main = names(rnkGS_Z)[10], cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, top6G, "type", dge.filt, main = names(rnkGS_Z)[37], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top2G, "type", dge.filt, main = names(rnkGS_Z)[2], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top3G, "type", dge.filt, main = names(rnkGS_Z)[3], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top4G, "type", dge.filt, main = names(rnkGS_Z)[4], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top5G, "type", dge.filt, main = names(rnkGS_Z)[5], cex.main = 0.7, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top6G, "type", dge.filt, main = names(rnkGS_Z)[6], cex.main = 0.7, cex.lab = 2, las = 1)
 ```
 
 We can see in figure \@ref(fig:scatter_plot1) that, in general, the distribution of the genes in these gene sets are mainly down-regulated in tumor cases respect to normal.
@@ -227,24 +229,17 @@ These are the top 6 gene sets selected by the χ2-score test:
 
 ```{r scatter_plot, fig.align = 'center'}
 topgs1genes <- colnames(Im)[which(Im[names(rnkGS)[1], ] == 1)]
-genesGS2
 genesGS1 <- rowData(coadse.filt)[topgs1genes,1]
-genesGS1
 topgs2genes <- colnames(Im)[which(Im[names(rnkGS)[2], ] == 1)]
 genesGS2 <- rowData(coadse.filt)[topgs2genes,1]
-genesGS2
 topgs3genes <- colnames(Im)[which(Im[names(rnkGS)[3], ] == 1)]
 genesGS3 <- rowData(coadse.filt)[topgs3genes,1]
-genesGS3
 topgs4genes <- colnames(Im)[which(Im[names(rnkGS)[4], ] == 1)]
 genesGS4 <- rowData(coadse.filt)[topgs4genes,1]
-genesGS4
 topgs5genes <- colnames(Im)[which(Im[names(rnkGS)[5], ] == 1)]
 genesGS5 <- rowData(coadse.filt)[topgs5genes,1]
-genesGS5
 topgs6genes <- colnames(Im)[which(Im[names(rnkGS)[6], ] == 1)]
 genesGS6 <- rowData(coadse.filt)[topgs6genes,1]
-genesGS6
 par(mfrow = c(2, 3), mar= c(0.5,5,2,0.5), mai=c(0.5,0.6,0.6,0.5))
 plotGS(coadse.filt, topgs1genes, "type", dge.filt,  main = names(rnkGS)[1],cex.main = 0.7, cex.lab = 2, las = 1)
 plotGS(coadse.filt, topgs2genes, "type", dge.filt, main = names(rnkGS)[2],cex.main = 0.7, cex.lab = 2, las = 1)

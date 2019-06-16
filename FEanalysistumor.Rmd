@@ -70,11 +70,47 @@ pv <- pmin(pnorm(zS), 1 - pnorm(zS))
 sum(pv < 0.5)
 pvadj <- p.adjust(pv, method = "fdr")
 DEgs <- names(pvadj)[which(pvadj < 0.1)]
-length(DEgs)
-head(DEgs, n = 7)
 DEgs
 ```
+In the tumor-stages analysis there was not enough statistical power to detect DE genes in the different tumorogenic stages (I-IV), previosly to the gene set enrichment. However, after applying GSEA to the data we could see some relevant pathways that may differe between those stages. 
 
+Although many genes have been associated with the increased risk of CRC, the genetic differences across different stages of CRC have not been clearly identified @lorenc2017profile. Some genes have been reported to be potentially associated with higher stages of the cancer, as NEK4, RNF34 (implied in senescence and apoptosis) and NUDT6 (control signaling compounds and degradates potentially mutagenic oxidized nucleotides), which are expected to be in low concentration for higher stage of the disease. 
+
+For example, among the top 20 patways ranked according to the Z-score test, there are included those related to Homeostasis, the signaling pathway of PDGF, and the PI3K pathway. PDGF has been found to an important growth factor for normal tissue growth and division @manzat2017role, and also corelated with CRC invasion and metastasis when deregulated. Regarding to PI3K pathway, has also been related with loss of Adenomatous Polyposis Coli (APC), commented to be potentially important in CRC development. 
+
+However, we still miss some information that may be the reason for a non statistical reliable results. In our tumor stages study, some limitations are found: we only use TCGA CRC data on samples from cancer patients, and thus the analysis was only performed on these samples (difficulty to have a control); many field of the TCGA data were missing (NAs), which was not possible to be evaluated, and may be alterating gene expression in some of the genes of interest.
+
+Finally, the last test we decided to perform to try to identy visually some kind of differences between the different stages was a boxplot of the different logCPM values between stages in those genes with highest logFC values.
+
+```{r boxplot, fig.cap="Boxplot of RIPK3"}
+boxplotgenes <- function(se, gene) {
+  iterations = dim(se)[2]
+  variables = 2
+  output <- matrix(ncol=variables, nrow=iterations)
+  output <- data.frame(output)
+  colnames(output) <- c("stage", "logCPM")
+  aa <- se[rowData(se)$symbol == gene]$ajcc_pathologic_tumor_stage
+  bb<-assays(se[rowData(se)$symbol == gene])$logCPM
+  for(i in 1:iterations){
+  output$stage[i] <- aa[i]
+  output$logCPM[i] <- bb[i]
+  }
+  output$stage<-gsub(x = output$stage, pattern = "1", replacement = "Stage I")
+  output$stage<-gsub(x = output$stage, pattern = "2", replacement = "Stage II")
+  output$stage<-gsub(x = output$stage, pattern = "3", replacement = "Stage III")
+  output$stage<-gsub(x = output$stage, pattern = "4", replacement = "Stage IV")
+  boxplot(logCPM ~ stage, data=output, col=c("grey","red", "pink", "cyan", main= gene , ylab="logCPM"))
+}
+
+all_DEgenes <- tt
+all_DEgenes_sorted <- all_DEgenes[order(all_DEgenes$adj.P.Val),]
+genes<-rownames(all_DEgenes_sorted)[13]
+gene<-dge.tumor$genes$symbol[rownames(dge.tumor$genes) == genes]
+
+
+boxplotgenes(coadse.tumor, gene)
+```
+Finally, in the figure @ref(fig:boxplot) we have represented the different logCPM values among stages of RIPK3 gene, the thirteenth gene with a higher logFC value, and a gene that has been suggested as a potential predictive and prognostic marker in metastatic colon cancer @conev2019ripk3. Looking at the plot, we can not see important differences among stages but a subtle tendency of increasing the logCPM values stage to stage. 
 
 
 ## Session Information

@@ -53,7 +53,8 @@ is.fullrank(mod)
 We use the [sva package](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3307112/) for identifying and removing batch effects and other unwanted sources of variation.
 ```{r}
 sv <- sva(assays(coadse.filt)$logCPM, mod, mod0)
-sv$n
+levels(coadse.filt$type)
+-sv$n
 ```
 
 The SVA algorithm has found `r sv$n` surrogate variables which we add to our model.
@@ -73,7 +74,7 @@ This step could be executed with both limma trend and limma voom. We decided to 
 So, we calculate the weights that estimate the mean-variance realtionship at gene-by-sample level with the `voom()` function. The obtained weights will be used to fit the model. 
 
 ```{r, fig.cap="Mean-variance trend"}
-v <- voom(dge.filt, modsv, plot=TRUE)
+v <- voom(dge.filt, modsv, plot=TRUE, normalize.method = "quantile")
 ```
 
 Next, we fit a linear model with the `fit()` function.
@@ -106,11 +107,12 @@ genesmd <- data.frame(chr = as.character(sub("\\_.*", "", seqnames(rowRanges(coa
 #Extract a table of the top-ranked genes from a linear model fit.
 fit$genes <- genesmd
 tt <- topTable(fit, coef = 2, n = Inf)
+head(tt$logFC)
 genes<-table(as.character(sub("\\chr*", "",tt$chr[tt$adj.P.Val < FDRcutoff])))
 par(las=2) # make label text perpendicular to axis
 par(mar=c(5,8,4,2)) # increase y-axis margin.
 genesmd
-names.arg=c("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","X","Y")
+names.arg=c("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","X","Y", "Un")
 barplot(genes,  cex.names=0.7, names.arg = names.arg, col=rgb(0.7, 0.1, 0.3))
 sort(table(tt$chr[tt$adj.P.Val < FDRcutoff]), decreasing = TRUE)
 ```
@@ -132,6 +134,27 @@ At the moment, we could not find a suitable dataset for this task but in the fut
 Lastly, we just collect our set of differential expressed genes to proceed with further analyses.
 
 We proceed to filter only those genes with FDR < 1% and a logFC > 2 (a minimum 100% change in expression)
+```{r}
+boxplotgenes <- function(se, gene) {
+  iterations = dim(se)[2]
+  variables = 2
+  output <- matrix(ncol=variables, nrow=iterations)
+  output <- data.frame(output)
+  colnames(output) <- c("type", "logCPM")
+  aa <- se[rowData(se)$symbol == gene]$type
+  bb<-assays(se[rowData(se)$symbol == gene])$logCPM
+  for(i in 1:iterations){
+  output$type[i] <- aa[i]
+  output$logCPM[i] <- bb[i]
+  }
+  output$type<-gsub(x = output$type, pattern = "1", replacement = "normal")
+  output$type<-gsub(x = output$type, pattern = "2", replacement = "tumor")
+  boxplot(logCPM ~ type, data=output, col=c("grey",rgb(0.7, 0.1, 0.3)), main=gene, ylab="logCPM")
+}
+
+boxplotgenes(coadse.filt, "PDGFB") 
+
+```
 
 ```{r}
 tt.filt <- tt[tt$adj.P.Val < FDRcutoff,]  #filtering by FDR < 0.01
@@ -142,8 +165,225 @@ down_regulated <- all_DEgenes[which(all_DEgenes$logFC < 0),] # DE genes down reg
 length(rownames(all_DEgenes)) # how many DE genes we have
 length(rownames(up_regulated)) #  Up-reg DE
 length(rownames(down_regulated)) # Down-reg DE
+down_regulated <- down_regulated[order(down_regulated$logFC),]
+up_regulated <- up_regulated[order(up_regulated$logFC, decreasing = TRUE),]
+#down regultated in normal - up regulated in tumor
+print("Downregulated genes in tumor: ")
+print(down_regulated$symbol)
+print("Upregulated genes in tumor: ")
+print(up_regulated$symbol)
 ```
 After the filtering, the total number of DE genes is `r length(rownames(all_DEgenes))`, from which `r length(rownames(up_regulated))` are up regulated and `r length(rownames(down_regulated))` are down regulated.
+
+"Downregulated genes in tumor: "
+  [1] "PPP1R16B"      "CA11"          "LVRN"          "WNT10A"        "HDAC2"         "CLCN1"        
+  [7] "SCPEP1"        "OPRK1"         "OR52R1"        "CA9"           "STATH"         "CA5B"         
+ [13] "CLDND2"        "TOP3A"         "PSD3"          "STK4"          "GJB3"          "CD1A"         
+ [19] "RBMY1J"        "BET1L"         "JAK1"          "BMP5"          "CXADR"         "SYCN"         
+ [25] "LMBR1"         "SNORD116-28"   "IFNA10"        "CEBPB"         "B4GALNT4"      "HDAC11"       
+ [31] "SURF4"         "RAB2B"         "DPPA4"         "PELI1"         "CHI3L2"        "SNORD115-9"   
+ [37] "TMEM70"        "CA4"           "SIRPA"         "PIK3C2A"       "ABCA8"         "CADPS"        
+ [43] "ANK2"          "MIR4298"       "WFDC2"         "ZNF830"        "RAB21"         "ZNF816"       
+ [49] "CNTN2"         "C11orf88"      "SP2"           "CDKN3"         "LDAH"          "ATP1A4"       
+ [55] "GREM2"         "OR13F1"        "ADH1B"         "CADM4"         "PDHB"          "FAM151A"      
+ [61] "SP5"           "GIMAP5"        "CNTN5"         "ANGPTL3"       "CDH22"         "STAT6"        
+ [67] "BCKDHB"        "SNORD114-6"    "ABCG2"         "OR4K5"         "HSD17B7"       "ALPK2"        
+ [73] "CASS4"         "KRT5"          "HEY2"          "SNORD116-8"    "PDGFA"         "RAET1E"       
+ [79] "TYMS"          "RANGRF"        "PDK1"          "ADH1C"         "AGTR2"         "INS"          
+ [85] "CHPT1"         "MPLKIP"        "ADCYAP1R1"     "ZNF202"        "FABP9"         "PSAP"         
+ [91] "TAB2"          "MIR22HG"       "AKR1C1"        "PABPC4"        "SNORA27"       "TSKU"         
+ [97] "TMEM150B"      "CCBL2"         "MIR3911"       "DHX15"         "MIR4787"       "WDR33"        
+[103] "ANTXR2"        "DFFA"          "OR5A1"         "ADTRP"         "GULP1"         "CMBL"         
+[109] "FRMD5"         "SFXN1"         "FGL1"          "CNST"          "SCARNA4"       "TRERF1"       
+[115] "PTGR1"         "AKR1C2"        "OR13C5"        "CLCA4"         "GRM4"          "EPHX1"        
+[121] "MIR4471"       "BEST4"         "ZNF804B"       "RANBP6"        "GK2"           "PSMC6"        
+[127] "MEST"          "STAM2"         "KRT3"          "SPATA7"        "IGSF3"         "PPP1R14A"     
+[133] "YPEL2"         "WDR53"         "ASPG"          "C16orf91"      "RPL41"         "TMEM167A"     
+[139] "ADH1A"         "UBXN4"         "SNORD115-39"   "SNORD116-22"   "AMPD3"         "SNORD116-19"  
+[145] "GOLPH3L"       "OR6N1"         "C2orf91"       "HEYL"          "BAIAP2L1"      "SUPT6H"       
+[151] "MIR4291"       "RPS4Y2"        "LINC00862"     "ANO7"          "PCSK6"         "LINC00471"    
+[157] "PIM3"          "GALR1"         "SYT8"          "MIR33B"        "VGLL1"         "SNORD115-47"  
+[163] "C21orf91"      "LOC254896"     "CNTN4"         "ZBTB7A"        "CLEC4D"        "MIR1283-2"    
+[169] "DMTF1"         "SNORD116-3"    "GGA1"          "CREBBP"        "RBBP6"         "SSBP3"        
+[175] "TSN"           "ENTPD3"        "OR13C4"        "CHRM1"         "TAZ"           "ZNF804A"      
+[181] "CTPS2"         "NT5M"          "RBMS2"         "FADS1"         "LOC145845"     "BEX4"         
+[187] "FAM111B"       "DNM1P41"       "EEF1A2"        "ITGB3BP"       "GTF3C5"        "IFIT5"        
+[193] "CTSL"          "LCE1E"         "XKR5"          "CNTN6"         "SLC22A5"       "RNF141"       
+[199] "WFIKKN2"       "EFNA4"         "IGF2BP3"       "HSCB"          "HIGD2A"        "PRSS50"       
+[205] "ADAMDEC1"      "ASPHD1"        "GYLTL1B"       "CNNM1"         "ID3"           "HMGB4"        
+[211] "GLT8D2"        "CHIA"          "CPEB4"         "PSCA"          "MIR3158-1"     "RASGRP2"      
+[217] "SNRNP40"       "WDR90"         "RECQL"         "GLTP"          "DNLZ"          "B3GLCT"       
+[223] "SAMD8"         "ICMT"          "IBA57"         "SNORD91B"      "ABI3BP"        "ATXN1"        
+[229] "LOC148413"     "XKR8"          "BTRC"          "RAB5C"         "TRIM65"        "CIR1"         
+[235] "GOPC"          "PTGER4"        "ZNF117"        "CPA3"          "ZNF83"         "TRIM68"       
+[241] "CBLN4"         "ACTG2"         "KIF20A"        "RTN4"          "ADCY5"         "SLC15A4"      
+[247] "HIGD1C"        "ANKAR"         "TMEM86B"       "C1QTNF9"       "TSTD2"         "OR13C2"       
+[253] "SCNN1D"        "RASGRF2"       "ADGRG4"        "PTAFR"         "IGFALS"        "GPRC6A"       
+[259] "SSFA2"         "LIMK2"         "SHANK1"        "ZGLP1"         "CNGB3"         "AFF3"         
+[265] "IBSP"          "FAM73A"        "LINC00477"     "WDR54"         "LINC00593"     "CCL17"        
+[271] "MIR451A"       "MIR3943"       "CRAMP1"        "P4HA3"         "PPP3CC"        "BMP7"         
+[277] "OR13C3"        "B3GNT9"        "PPP1CB"        "DPP9"          "SNORD22"       "SIGMAR1"      
+[283] "OR56A5"        "DCLRE1A"       "FLJ13224"      "SPATA6"        "FEZF1"         "TMEM258"      
+[289] "OR52W1"        "OR51G1"        "C12orf56"      "KSR1"          "CRADD"         "FGF2"         
+[295] "BTNL9"         "ADAMTSL3"      "NUCKS1"        "FKBP4"         "PABPC5"        "CDKN2D"       
+[301] "GLTPD2"        "OR7G1"         "NOL6"          "TMEM56-RWDD3"  "FADS3"         "ZNF213"       
+[307] "EPC1"          "CALCB"         "PDPK1"         "CFHR1"         "SPNS1"         "METAP1D"      
+[313] "INSL4"         "AHDC1"         "FAM138B"       "LOC100507091"  "BABAM1"        "ENTPD8"       
+[319] "CHMP1A"        "ABCA9"         "SATB2"         "MIR514A2"      "KDM4D"         "PXDN"         
+[325] "NT5C2"         "USP6NL"        "PTK2B"         "SNORD36B"      "CHP1"          "LMO7"         
+[331] "SLC30A9"       "SNORD116-11"   "ZNF295-AS1"    "KCNN2"         "RASGRP4"       "PXN"          
+[337] "MIR3925"       "ABCA6"         "KIF25"         "GYPB"          "ZNF530"        "SNORD115-38"  
+[343] "KIF24"         "DPM1"          "MIR3684"       "FEZ1"          "ISYNA1"        "BNC2"         
+[349] "ADHFE1"        "SNORD9"        "PPP3R2"        "OR5M11"        "SLC31A2"       "WNT16"        
+[355] "F11R"          "LIPT1"         "PFN3"          "MIR5047"       "CCL3L3"        "FGF18"        
+[361] "ASB4"          "SS18L2"        "HRG"           "PSEN1"         "SNORA10"       "AXIN2"        
+[367] "KDM5B"         "MIR432"        "OR2W3"         "PPP2R5E"       "CNN2"          "LYSMD1"       
+[373] "CCDC70"        "SUB1"          "DSCR8"         "VPS13B"        "FLG"           "GRHL1"        
+[379] "RAPGEF1"       "TRIM8"         "SRR"           "CPNE1"         "KRT10"         "IRAK1BP1"     
+[385] "ZNF782"        "MIR4489"       "HAT1"          "GMPPA"         "CCDC154"       "SLC29A2"      
+[391] "WDR12"         "INS-IGF2"      "CHAF1B"        "FGFR1OP"       "PCBD1"         "PDS5B"        
+[397] "CXCL16"        "C14orf178"     "SRRM5"         "CA14"          "LMBRD2"        "BCAS3"        
+[403] "PFKFB2"        "GK5"           "CLVS1"         "CLCC1"         "SGK3"          "ATP1A1"       
+[409] "ZNF772"        "COL5A3"        "RHBDL3"        "ZFP1"          "PSMD5"         "RNF122"       
+[415] "STIM2"         "CRTC1"         "GFER"          "SPAG5"         "SYNJ2BP-COX16" "VPREB1"       
+[421] "PDGFRL"        "ENO4"          "ZNF445"        "ARL16"         "EP300"         "GPR150"       
+[427] "MFSD3"         "FETUB"         "CCDC102A"      "BYSL"          "IDH1"          "IGF2R"        
+[433] "KRTAP26-1"     "ZNF273"        "CLEC12B"       "INSIG1"        "TSTD1"         "OPN5"         
+[439] "F7"            "EML6"          "FNDC5"         "FAM19A4"       "FGF13"         "CNTNAP1"      
+[445] "PRPH2"         "AP3M1"         "NUP85"         "HIGD1B"        "ARHGAP5-AS1"   "CDKL5"        
+[451] "SNORD116-23"   "TNNC2"         "HMGXB3"        "ARHGAP22"      "MIR29B2"       "SNORD68"      
+[457] "TPSB2"         "MECR"          "ID4"           "RAB18"         "C1orf189"      "HGC6.3"       
+[463] "SNORD116-24"   "GMEB2"         "OR13H1"        "CD81"          "KCTD5"         "CD164"        
+[469] "MIR4786"       "OR51F1"        "SEMA3B"        "MARCKSL1"      "SIM1"          "BEND7"        
+[475] "EEF1G"         "CCNA2"         "SPIN2B"        "CD177"         "SMCR8"         "CRYBB2"       
+[481] "ATAD1"         "DIRC1"         "EEF1A1"        "RPL27"         "BLMH"          "CD3D"         
+[487] "DHRS2"         "STX17"         "CLDN15"        "CILP"          "TSEN15"        "ZBTB32"       
+[493] "SYNPR"         "CCL21"         "GABRA4"        "SCEL"          "SSX5"          "CCL26"        
+[499] "FAM19A3"       "CASP7"         "SLC27A4"       "CCL24"         "LINC00575"     "ATP1B4"       
+[505] "SARDH"         "UFC1"          "MIR4295"       "PCDH15"        "CRYBA4"        "HUNK"         
+[511] "PAICS"         "FAM214A"       "KIAA1755"      "PROCR"         "RBAK"          "TRIQK"        
+[517] "B3GNT8"        "TOPBP1"        "RAVER1"        "KCNH6"         "KCNA1"         "HK1"          
+[523] "SIAH3"         "HAPLN1"        "AOX1"          "FRA10AC1"      "PSMB7"         "SNORD15B"     
+[529] "YLPM1"         "IFI44L"        "ZNF800"        "INPP1"         "REM1"          "KIAA1456"     
+[535] "LAMTOR3"       "SGMS2"         "R3HDML"        "HUS1B"         "GPR143"        "DMRT2"        
+[541] "ZMAT3"         "TPD52L3"       "TYRP1"         "ST3GAL5"       "TAAR8"         "FMO5"         
+[547] "FMO6P"         "SNORA30"       "REEP5"         "DAGLA"         "SNORD49A"      "VSTM2L"       
+[553] "FAM83C"        "MIR520A"       "LMAN2"         "LAMA5"         "DYNLL1"        "ABCB1"        
+[559] "GRIN2D"        "MIR2682"       "RILPL1"        "SLC12A3"       "USPL1"         "RNF213"       
+[565] "GPR148"        "LINC00052"     "CYP2C9"        "GOLGA6A"       "USP31"         "LACRT"        
+[571] "CXXC1"         "SLC18A3"       "PARD6G"        "ADAMTSL1"      "C1orf122"      "CLIP1"        
+[577] "CDR2"          "GLIS3"         "OR8B8"         "MIR30D"        "CEACAM19"      "SNORA49"      
+[583] "KIAA0895L"     "PSD2"          "CYP3A7"        "GRASP"         "SIPA1L3"       "BICD1"        
+[589] "GTPBP2"        "KLHL20"        "MIR376A1"      "MIR4451"       "OPTN"          "VCAN"         
+[595] "ABCD2"         "SARS"          "GAN"           "TTLL3"         "ANKRD39"       "FUT9"         
+[601] "RNF207"        "MIR548G"       "CKM"           "CFP"           "FKBP9"         "TMEM229A"     
+[607] "KRTAP10-7"     "GREB1"         "CHST8"         "FRMPD4"        "OR6N2"         "PRICKLE4"     
+[613] "CHRNA6"        "FAM66A"        "TRIM64C"       "GBP3"          "ACADS"         "KRTAP19-5"    
+[619] "STK32B"        "CTNNB1"        "SYT12"         "GATSL2"        "ZC3H11A"       "ZNF543"       
+[625] "SLC17A2"       "OR2M4"         "CA3"           "CDK10"         "OR10V1"        "EEA1"         
+[631] "MIR514A1"      "OR2T27"        "GLIPR2"        "OR8D1"         "SNORA70"       "C7orf13"      
+[637] "MIR4319"       "SPANXB1"       "FRMD1"         "APOBEC3C"      "CPOX"          "FZD6"         
+[643] "ZNF518A"       "GPR146"        "KIAA0408"      "DCLK2"         "GFI1"          "OR13G1"       
+[649] "MED9"          "SCARNA13"      "FAM173B"       "PCNX4"         "CDK5RAP3"      "UBA5"         
+[655] "TRPC6"         "RASD1"         "NEK7"          "COL19A1"       "GZMA"          "FAM98B"       
+[661] "MIR518E"       "TMEM87B"       "OR5R1"         "CR1L"          "KCNJ2-AS1"     "FAM196A"      
+[667] "FLJ33581"      "RNF130"        "ADAM33"        "CFAP74"        "CYP2C8"        "CD244"        
+[1] "Upregulated genes in tumor: "
+  [1] "NT5DC2"      "CDH6"        "FZD9"        "COL13A1"     "DPH1"        "LCE2A"      
+  [7] "COPA"        "LDHAL6A"     "ESRP2"       "EVI5L"       "ITLN1"       "CLDN23"     
+ [13] "KLRF2"       "CPO"         "GZF1"        "C6orf226"    "TRIM13"      "CLDN12"     
+ [19] "NT5DC1"      "CAB39L"      "HEBP2"       "OR11H6"      "IGLL1"       "EPOR"       
+ [25] "TTBK2"       "NSMAF"       "ZFR2"        "RSC1A1"      "MIR3689D2"   "L3MBTL2"    
+ [31] "CXCR1"       "RS1"         "LCA5L"       "LCN8"        "C2CD4C"      "UBTD2"      
+ [37] "FMO3"        "STUB1"       "ADAM12"      "MIR4468"     "ZFP30"       "TMPRSS11A"  
+ [43] "CELA2B"      "CTNNA1"      "SIGLEC14"    "C2orf72"     "KNDC1"       "PBOV1"      
+ [49] "CHIC1"       "SRRD"        "CCDC8"       "CYP3A43"     "FAM187B"     "CHAC1"      
+ [55] "RAPGEF2"     "SUPT7L"      "HEXIM1"      "UGT2B4"      "SIGLEC10"    "MIR4710"    
+ [61] "RBM45"       "SYT7"        "KSR2"        "TMEM187"     "FBXL21"      "PBLD"       
+ [67] "ITGA1"       "CLEC9A"      "ACAN"        "EGLN1"       "RRAS2"       "ACSL6"      
+ [73] "TRAF4"       "TNFAIP8"     "SYNE2"       "SPIN2A"      "IFI16"       "CCNY"       
+ [79] "C19orf60"    "PIM1"        "APLP1"       "YOD1"        "SNORA37"     "ADAMTS12"   
+ [85] "SLC22A25"    "ATIC"        "ASCL4"       "UHRF1BP1"    "SPEF2"       "LOC158435"  
+ [91] "NSL1"        "GLE1"        "PSG1"        "SNORD89"     "SLC35B3"     "MIR409"     
+ [97] "CEP131"      "COL9A1"      "DSCR3"       "RTN2"        "CMTR1"       "NRSN1"      
+[103] "MIR326"      "FOXF2"       "SP4"         "AK1"         "UGT2B17"     "MIR3147"    
+[109] "BMP8B"       "ATL1"        "SYDE2"       "SNX8"        "KRT78"       "FLJ37505"   
+[115] "OR4K1"       "ZNF771"      "OR11H4"      "UBE2M"       "RIBC1"       "GALNT12"    
+[121] "SNORA52"     "UFM1"        "WFDC6"       "PPP2R2C"     "SYCP2"       "SCLT1"      
+[127] "CDKN2B"      "XPNPEP2"     "HACE1"       "DUSP9"       "MIR508"      "CEMP1"      
+[133] "L3MBTL3"     "LRRC40"      "LMF2"        "CXCL14"      "COL21A1"     "TNNI1"      
+[139] "MIR510"      "ZFAND2B"     "GPR50"       "LCNL1"       "XRCC6"       "XKR4"       
+[145] "VPS11"       "KCNK7"       "RAB11FIP4"   "SRP14"       "LOC284632"   "L3MBTL4"    
+[151] "PANX1"       "DNAH9"       "ADAMTS2"     "BHLHA9"      "KREMEN2"     "CENPA"      
+[157] "SNORD115-33" "TNFAIP8L2"   "DEFB103B"    "GLMN"        "C19orf47"    "OR1L3"      
+[163] "FGFBP3"      "TAS2R16"     "UBE3A"       "WRB"         "ANKRD13D"    "AQR"        
+[169] "LOC149950"   "UBE2L6"      "ATP6V1E1"    "SSH2"        "SPIN1"       "BRINP2"     
+[175] "UNG"         "GOT1L1"      "CXCL12"      "SYN3"        "CXCL9"       "RND1"       
+[181] "OR4D10"      "DBP"         "CYP51A1"     "ANKRD31"     "MICALL2"     "P4HA1"      
+[187] "ZNF135"      "ASPM"        "LINC00514"   "HOXC8"       "TMED5"       "IRF9"       
+[193] "ARPC1B"      "CDC27"       "AGTPBP1"     "HCFC1R1"     "MIR4535"     "TNIK"       
+[199] "SF3B1"       "HTR4"        "ZNF609"      "SIAE"        "GBP6"        "KIAA1683"   
+[205] "STIP1"       "ATP11C"      "ABCC2"       "PRDM5"       "SBDS"        "LASP1"      
+[211] "OR56B4"      "CCL27"       "HEMGN"       "ZNF664"      "ZNF841"      "RBM26-AS1"  
+[217] "KRT86"       "GAMT"        "MIR125B1"    "HELLS"       "CYP2A6"      "SOCS3"      
+[223] "PRICKLE3"    "USP28"       "P4HA2"       "ERI2"        "ARID3C"      "SLC1A1"     
+[229] "RAP1GAP2"    "CR1"         "TMEM182"     "FLJ38576"    "PPOX"        "MIR129-1"   
+[235] "KATNA1"      "NSMCE1"      "SLC38A3"     "HIRIP3"      "ZNF214"      "ASCC1"      
+[241] "ZBTB41"      "CEP85"       "TMEM246"     "MEPCE"       "SNORD46"     "CXCR2"      
+[247] "GUSB"        "DGCR11"      "PCDHGA11"    "ERVV-2"      "MIR1253"     "ZNF850"     
+[253] "PROKR2"      "ADAMTS6"     "FCRL6"       "SAT1"       
+Show in New WindowClear OutputExpand/Collapse Output
+
+Show in New WindowClear OutputExpand/Collapse Output
+	
+Removed 1 rows containing missing values (geom_point).
+Removed 1 rows containing missing values (geom_text).
+
+Show in New WindowClear OutputExpand/Collapse Output
+R version 3.5.3 (2019-03-11)
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+Running under: macOS Mojave 10.14.3
+
+Matrix products: default
+BLAS: /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib
+LAPACK: /Library/Frameworks/R.framework/Versions/3.5/Resources/lib/libRlapack.dylib
+
+locale:
+[1] es_ES.UTF-8/es_ES.UTF-8/es_ES.UTF-8/C/es_ES.UTF-8/es_ES.UTF-8
+
+attached base packages:
+[1] parallel  stats4    stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+ [1] GSVA_1.30.0                 GSVAdata_1.18.0             hgu95a.db_3.2.3            
+ [4] GSEABase_1.44.0             org.Hs.eg.db_3.7.0          xtable_1.8-4               
+ [7] GOstats_2.48.0              graph_1.60.0                Category_2.48.1            
+[10] Matrix_1.2-17               EnhancedVolcano_1.0.1       ggrepel_0.8.1              
+[13] ggplot2_3.1.1               calibrate_1.7.2             MASS_7.3-51.4              
+[16] sva_3.30.1                  genefilter_1.64.0           mgcv_1.8-28                
+[19] nlme_3.1-140                geneplotter_1.60.0          annotate_1.60.1            
+[22] XML_3.98-1.20               AnnotationDbi_1.44.0        lattice_0.20-38            
+[25] edgeR_3.24.3                limma_3.38.3                SummarizedExperiment_1.12.0
+[28] DelayedArray_0.8.0          BiocParallel_1.16.6         matrixStats_0.54.0         
+[31] Biobase_2.42.0              GenomicRanges_1.34.0        GenomeInfoDb_1.18.2        
+[34] IRanges_2.16.0              S4Vectors_0.20.1            BiocGenerics_0.28.0        
+[37] knitr_1.23                 
+
+loaded via a namespace (and not attached):
+ [1] bit64_0.9-7            splines_3.5.3          shiny_1.3.2            assertthat_0.2.1      
+ [5] RBGL_1.58.2            blob_1.1.1             GenomeInfoDbData_1.2.0 pillar_1.4.1          
+ [9] RSQLite_2.1.1          glue_1.3.1             digest_0.6.19          promises_1.0.1        
+[13] RColorBrewer_1.1-2     XVector_0.22.0         colorspace_1.4-1       httpuv_1.5.1          
+[17] htmltools_0.3.6        plyr_1.8.4             pkgconfig_2.0.2        zlibbioc_1.28.0       
+[21] purrr_0.3.2            GO.db_3.7.0            scales_1.0.0           later_0.8.0           
+[25] tibble_2.1.3           withr_2.1.2            lazyeval_0.2.2         mime_0.6              
+[29] survival_2.44-1.1      magrittr_1.5           crayon_1.3.4           evaluate_0.14         
+[33] memoise_1.1.0          tools_3.5.3            munsell_0.5.0          locfit_1.5-9.1        
+[37] compiler_3.5.3         rlang_0.3.4            grid_3.5.3             RCurl_1.95-4.12       
+[41] AnnotationForge_1.24.0 bitops_1.0-6           labeling_0.3           gtable_0.3.0          
+[45] DBI_1.0.0              R6_2.4.0               dplyr_0.8.1            bit_1.1-14            
+[49] shinythemes_1.1.2      KernSmooth_2.23-15     Rgraphviz_2.26.0       Rcpp_1.0.1            
+[53] tidyselect_0.2.5       xfun_0.7              
 
 ```{r plotMA, fig.cap="MA plot of DE genes with logFC > 2 and FDR cutoff < 0.01."}
 tt.filt <- tt[tt$adj.P.Val < FDRcutoff,]  #filtering by FDR < 0.01

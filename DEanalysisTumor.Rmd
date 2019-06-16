@@ -55,6 +55,7 @@ DEgenes <- rownames(tt)[tt$adj.P.Val < 0.1]
 length(DEgenes)
 saveRDS(tt, file.path("results", "tt.rds"))
 ```
+
 This can be due to the fact that in many different biological contexts gene expression changes may be very little and after Multiple test adjusting no significant DE genes can be identified.
 We then decide to run a Principal Component Analysis to further explore the gene expression among the four cancer stages.
 Since we use the prcomp() function, we first need to transpose our matrix in order to have the samples as rows, if not we would get a pca analysis explaining how genes are related to each other, which in this case is not the desired output. After having prepared our data, we run the pca analyis and we can observe that the first four principal components explain respectively 11.7%, 7%, 6% and 4% of the variability. 
