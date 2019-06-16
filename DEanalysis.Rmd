@@ -70,10 +70,11 @@ barplot(sort(dge.filt$samples$lib.size)/1e+06, xlab = "Samples", ylab = "Library
 
 This step could be executed with both limma trend and limma voom. We decided to proceed with the voom() function, since as we can observe in the Figure \@ref(fig:libsize), there are big differences in library sizes among the samples.
 
-So, we calculate the weights that estimate the mean-variance realtionship at gene-by-sample level with the `voom()` function. The obtained weights will be used to fit the model. 
+So, we calculate the weights that estimate the mean-variance realtionship at gene-by-sample level with the `voom()` function. The obtained weights will be used to fit the model. Morevoer, at the same time, it performs a between-sample normalization.
 
 ```{r, fig.cap="Mean-variance trend"}
-v <- voom(dge.filt, modsv, plot=TRUE)
+v <- voom(dge.filt, modsv, plot=TRUE, normalize.method="quantile")
+
 ```
 
 Next, we fit a linear model with the `fit()` function.
@@ -110,7 +111,7 @@ genes<-table(as.character(sub("\\chr*", "",tt$chr[tt$adj.P.Val < FDRcutoff])))
 par(las=2) # make label text perpendicular to axis
 par(mar=c(5,8,4,2)) # increase y-axis margin.
 genesmd
-names.arg=c("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","X","Y")
+names.arg=c("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","X","Y","Un")
 barplot(genes,  cex.names=0.7, names.arg = names.arg, col=rgb(0.7, 0.1, 0.3))
 sort(table(tt$chr[tt$adj.P.Val < FDRcutoff]), decreasing = TRUE)
 ```
@@ -131,7 +132,8 @@ For doing this, we would need to use a dataset of genes which are known to be di
 At the moment, we could not find a suitable dataset for this task but in the future, to expand the analysis, it would be interesting to investigate this aspect further.
 Lastly, we just collect our set of differential expressed genes to proceed with further analyses.
 
-We proceed to filter only those genes with FDR < 1% and a logFC > 2 (a minimum 100% change in expression)
+We proceed to filter only those genes with FDR < 1% and a logFC > 2 (a minimum 100% change in expression).
+We then separately observe the upregulated genes in tumor (logFC>0) and the downregulated ones (logFC<0). We decide to investigate them by sorting them by logFC.
 
 ```{r}
 tt.filt <- tt[tt$adj.P.Val < FDRcutoff,]  #filtering by FDR < 0.01
@@ -142,67 +144,10 @@ down_regulated <- all_DEgenes[which(all_DEgenes$logFC < 0),] # DE genes down reg
 length(rownames(all_DEgenes)) # how many DE genes we have
 length(rownames(up_regulated)) #  Up-reg DE
 length(rownames(down_regulated)) # Down-reg DE
-
-#down regultated in normal - up regulated in tumor
-head(down_regulated, n = 30 )
-
-head(up_regulated, n = 30 )
-#Looking at individual genes, upregulation of connective tissue genes was prevalent (e.g.,??COL6A3, COL1A2, COL12A1, COL5A2, #COL3A1, CTHRC1, SULF1), as were genes involved in extracellular matrix function (e.g.,??LAMA4, PI3, POSTN, TIMP2) and cell #adhesion (e.g.,??TNS1). Genes involved in endothelial function (e.g.,??TIMP2) and specifically, colon cancer tumour #endothelium, such as the anthrax toxin receptor (ANTXR1), were also upregulated (Liu??et al, 2008).
-
-# upregulation of connective tissue genes
-all_DEgenes$symbol[grep("^COL", all_DEgenes$symbol)]
-up_regulated$symbol[grep("^COL", up_regulated$symbol)]
-down_regulated$symbol[grep("^COL", down_regulated$symbol)]
-#AnnotationDbi::select(org.Mm.eg.db, keys=genes, columns='ENTREZID', keytype='SYMBOL')
 down_regulated <- down_regulated[order(down_regulated$logFC),]
 up_regulated <- up_regulated[order(up_regulated$logFC, decreasing = TRUE),]
-down_regulated
-up_regulated
-head(down_regulated$symbol, n = 8)
-head(up_regulated$symbol, n = 8)
-head(coadse.filt$type)
-sort(down_regulated[down_regulated$logFC], decreasing = TRUE)
-##genes <- c("LAMA4", "PI3","POSTN"," TIMP2")
-"CTNNB1"  %in% all_DEgenes$symbol
-c("AGTR2","TP53","PIK3CA","AKT1","PDPK1","SMAD4","CTNNB1", "RET-ELE1")  %in% all_DEgenes$symbol
-#%in% all_DEgenes$symbol
-#c("COL6A3", "COL1A2", "COL12A1", "COL5A2", "COL3A1", "CTHRC1", "SULF1") %in% all_DEgenes$symbol
-
-
-# Age related methylation 
-# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5175245/
-c("PPP1R16B" )  %in% all_DEgenes$symbol
-
-# GLYCOPROTEIN - HYPERMETHILATION
-# https://www.uniprot.org/uniprot/O75493
-# https://link.springer.com/article/10.1007/s10151-018-1820-3
-# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3123690/
-c("CA11" )  %in% all_DEgenes$symbol
-c("LVRN")  %in% all_DEgenes$symbol
-
-#https://www.spandidos-publications.com/ol/17/4/3657
-
-# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2897904/ :HDAC2
-c("SOD1")  %in% all_DEgenes$symbol
-
-c("SEPT","d","SYNE1", "DKK3", "SDC2", "SFRP1", "SYNE1", "CEMIP", "SPATA18" )  %in% all_DEgenes$symbol
-
-# -- https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5998821/
-a <- c("SLC13A2", "NR1H4", "SLC9A3", "NXPE1", "WFDC2", "HOXA13", "AK1", "CYP2C18", "ST3GAL4", "APOA4", "GCG", "MUC5B", "TRPM6", "PI3", "SLPI", "FOXA2", "HOXD13", "PYY", "SLC14A2", "SPINK5", "CA1", "SLC37A2", "CHST5", "GALNT5", "SLC28A2", "SLC20A1", "AHSG", "CDHR1", "ADRA2A", "SPON1", "CLDN8", "HKDC1", "B3GNT7", "LRRC43", "PRAC1", "HOXB13", "ST6GALNAC6", "NLRP4", "CYP11B1", "NPHS1", "CAPN13", "PITX2", "C7orf57", "CPA6", "CYP2C19", "CKB", "ANPEP", "B4GALNT2", "DPCR1", "DRD5", "PKHD1", "KRT15", "REG3A", "INSL5", "HOXC5", "MFSD4", "C2orf73", "ARSJ", "B3GALT5", "FAM3B", "C21orf88", "FFAR4", "GLDN", "LHFPL3", "TMEM72", "NWD1", "WNT7B", "CTD-2228K2.5", "PLA2G2A", "ESRRG", "SULT1C2", "HSD3B2", "NPY4R", "MUC12", "GBP7", "PRAC2", "L1TD1")
-a %in% all_DEgenes$symbol
-#WFDC2, AK1 
-# Molecular transport, cell-to-cell signaling and interaction, nervous system development and function
-# 
-
-
-b <- c("ADK", "AK1", " APP", "BCKDK", "CAB39L", "CCDC144NL", "CKMT1A/CKMT1B", "CXXC1", "ENO3", "ESRRG", " FGF12", "GSPT2", "H2AFJ", "H2AFY", "HSP90AA1", "LAMC1", "MAST2", "MOGAT3", " NOL4L", " NSRP1", "PRR15", " R3HDML", " RPS6KA6", " SLC13A3", " SMG1", "SMG5", "SMTNL2", " SMYD3", "SRPK1", "STK26", "STRADA", "TRIM7", " TTI2", " TTPA", " UPF3A")
-b %in% all_DEgenes$symbol
-
-
-
-# Wnt10a is upregulated in colon cancer tissues and is associated with clinicopathological factors
-
-
+print(head(down_regulated$symbol, n = 8))
+print(head(up_regulated$symbol, n = 8))
 ```
 After the filtering, the total number of DE genes is `r length(rownames(all_DEgenes))`, from which `r length(rownames(up_regulated))` are up regulated and `r length(rownames(down_regulated))` are down regulated.
 
