@@ -14,7 +14,7 @@ and which are necessary in this file.
 
 # GSEA
 
-The magnitude of gene expression changes may be small and very few significant DE genes will be idenified after having adjusted for multiple testing. For this reason, we want to see if there are small but consistent changes occuring for a number of genes operating in a common pathway. We go throug this workflow by assessing DE genes direclty at the geneset level, starting from the expression data themselves. We approach this analysis by using the `GSEA algorithm`.
+In many differential gene expression analyses, the magnitude of gene expression changes may be small and very few significant DE genes will be idenified after having adjusted for multiple testing. For this reason, we want to see if there are small but consistent changes occuring for a number of genes operating in a common pathway. We go through this workflow by assessing DE genes direclty at the geneset level, starting from the expression data themselves. We approach this analysis by using the `GSEA algorithm`.
 
 ## Preparation
 
@@ -84,7 +84,7 @@ length(gsc)
 [1] 833
 ```
 
-Now we can start our GSEA analysis, using the algorithm refered as *simple GSEA* (Irizarry et al. (2009)[https://journals.sagepub.com/doi/abs/10.1177/0962280209351908]). 
+Now we can start our GSEA analysis, using the algorithm refered as *simple GSEA* (Irizarry et al. (2009)[https://journals.sagepub.com/doi/abs/10.1177/0962280209351908]).
 
 First, we need to map the identifiers from the gene sets to the identifiers of the data we are going to analyze. Furthermore, we create an incidence matrix (Im) which indicates which genes belong to what gene set.
 
@@ -124,9 +124,9 @@ KEGG_CITRATE_CYCLE_TCA_CYCLE        0    0    0    0    1    1    1     0
 KEGG_GLYCOLYSIS_GLUCONEOGENESIS    1     1
 KEGG_CITRATE_CYCLE_TCA_CYCLE       0     0
 ```
-We can see that several genes are present in more than one gene set, so later on we are going to go through overlaped gen sets.
+We can see that several genes are present in more than one gene set.
 
-Once done it, the following step will be discard those genes that do not form part of our data, and also discard all genes in our data that are not annotated to gene sets.
+Once done it, the following step will be to discard those genes that are not present in our data, and also discard all genes in our data that are not annotated in any gene sets.
 
 
 ```r
@@ -135,7 +135,7 @@ dim(Im)
 ```
 
 ```
-[1] 833 316
+[1] 833 312
 ```
 
 ```r
@@ -144,7 +144,7 @@ dim(coadse.filt)
 ```
 
 ```
-[1] 316  72
+[1] 312  72
 ```
 
 ```r
@@ -153,16 +153,16 @@ dim(dge.filt)
 ```
 
 ```
-[1] 316  72
+[1] 312  72
 ```
 
 As a result we have discarted almost **6400** genes that didn't belong to our data.
 
-## Simple GSEA 
+## Simple GSEA
 
 In order to determine whether an *a priori* defined set of genes shows statistically significant differences between tumor vs normal phenotypes, we are going to perform a *Gene Set Enrichment Analysis* to introduce a method for pathway analysis assessing DE directly at gene set level.
 
-The main scope of the GSEA approach is, as mentioned, to detect consistent and robust changes in expression within a gene set. To do so, we calculate the Enrichment Score (ES) as a z-score that may allow us to detect significantly those esmpented changes.
+The main scope of the GSEA approach is, as mentioned, to detect consistent and robust changes in expression within a gene set. To do so, we calculate the Enrichment Score (ES) as a z-score.
 
 We decided to filter out the genesets that contain less than 10 genes. In fact, very small gene sets may induce little reliability and increase type I errors (false positives). Then we also calculate the z-score.
 
@@ -175,7 +175,7 @@ length(zS)
 ```
 
 ```
-[1] 97
+[1] 98
 ```
 
 ```r
@@ -183,30 +183,30 @@ head(zS, n=10)
 ```
 
 ```
-          KEGG_GLYCOLYSIS_GLUCONEOGENESIS 
-                               -12.760330 
-               KEGG_FATTY_ACID_METABOLISM 
-                               -21.518174 
-        KEGG_STEROID_HORMONE_BIOSYNTHESIS 
-                                -6.429551 
-                   KEGG_PURINE_METABOLISM 
-                               -22.053866 
-               KEGG_PYRIMIDINE_METABOLISM 
-                               -38.604265 
-     KEGG_ARGININE_AND_PROLINE_METABOLISM 
-                                11.177267 
-                 KEGG_TYROSINE_METABOLISM 
-                               -32.996338 
-                  KEGG_RETINOL_METABOLISM 
-                                -3.563496 
-KEGG_PORPHYRIN_AND_CHLOROPHYLL_METABOLISM 
-                                15.383188 
-                 KEGG_NITROGEN_METABOLISM 
-                               -35.683544 
+                  KEGG_GLYCOLYSIS_GLUCONEOGENESIS 
+                                       -14.054563 
+                       KEGG_FATTY_ACID_METABOLISM 
+                                       -22.468084 
+                KEGG_STEROID_HORMONE_BIOSYNTHESIS 
+                                        -3.128532 
+                           KEGG_PURINE_METABOLISM 
+                                       -18.179222 
+                       KEGG_PYRIMIDINE_METABOLISM 
+                                       -39.806624 
+             KEGG_ARGININE_AND_PROLINE_METABOLISM 
+                                         8.772841 
+                          KEGG_RETINOL_METABOLISM 
+                                         3.420898 
+        KEGG_PORPHYRIN_AND_CHLOROPHYLL_METABOLISM 
+                                        17.655980 
+KEGG_METABOLISM_OF_XENOBIOTICS_BY_CYTOCHROME_P450 
+                                       -16.873131 
+             KEGG_DRUG_METABOLISM_CYTOCHROME_P450 
+                                         3.158353 
 ```
 
 The incidence matrix after the filtering has lost 200 gene sets approximately.
-As we can see, know we have 618 pathways that contain a total of 4174 genes. 
+As we can see, know we have 618 pathways that contain a total of 4174 genes.
 
 
 ```r
@@ -225,31 +225,51 @@ Just to have an overview we rank the gene sets according to  Z-scores, and show 
 
 
 ```r
-rnkGS <- sort(abs(zS), decreasing = TRUE)
-head(rnkGS, n=10)
+rnkGS_Z <- sort(abs(zS), decreasing = TRUE)
+head(rnkGS_Z, n=20)
 ```
 
 ```
-                  REACTOME_SIGNALLING_BY_NGF 
-                                    54.86518 
-                 KEGG_OLFACTORY_TRANSDUCTION 
-                                    49.40351 
-                         REACTOME_HEMOSTASIS 
-                                    47.87507 
-KEGG_NEUROACTIVE_LIGAND_RECEPTOR_INTERACTION 
-                                    45.54628 
-         REACTOME_SIGNALING_IN_IMMUNE_SYSTEM 
-                                    45.23020 
-        REACTOME_OLFACTORY_SIGNALING_PATHWAY 
-                                    44.62750 
-                  REACTOME_DIABETES_PATHWAYS 
-                                    39.45667 
-             REACTOME_METABOLISM_OF_PROTEINS 
-                                    39.16201 
-                  KEGG_WNT_SIGNALING_PATHWAY 
-                                    38.80835 
-                  KEGG_PYRIMIDINE_METABOLISM 
-                                    38.60427 
+                   REACTOME_SIGNALLING_BY_NGF 
+                                     43.99818 
+ KEGG_NEUROACTIVE_LIGAND_RECEPTOR_INTERACTION 
+                                     42.76569 
+                   KEGG_PYRIMIDINE_METABOLISM 
+                                     39.80662 
+                  KEGG_OLFACTORY_TRANSDUCTION 
+                                     37.54749 
+REACTOME_P75_NTR_RECEPTOR_MEDIATED_SIGNALLING 
+                                     33.75918 
+    REACTOME_HOST_INTERACTIONS_OF_HIV_FACTORS 
+                                     33.30035 
+                     REACTOME_G1_S_TRANSITION 
+                                     33.27730 
+               KEGG_CALCIUM_SIGNALING_PATHWAY 
+                                     33.20118 
+                   REACTOME_DIABETES_PATHWAYS 
+                                     33.04180 
+                   KEGG_WNT_SIGNALING_PATHWAY 
+                                     32.83759 
+ REACTOME_DOWNSTREAM_EVENTS_IN_GPCR_SIGNALING 
+                                     32.35510 
+                 KEGG_NOTCH_SIGNALING_PATHWAY 
+                                     32.23747 
+                          KEGG_TIGHT_JUNCTION 
+                                     32.13952 
+          REACTOME_CELL_CELL_ADHESION_SYSTEMS 
+                                     32.06619 
+          REACTOME_FORMATION_OF_PLATELET_PLUG 
+                                     31.95290 
+           KEGG_DRUG_METABOLISM_OTHER_ENZYMES 
+                                     31.52333 
+                  KEGG_LONG_TERM_POTENTIATION 
+                                     31.51740 
+                          REACTOME_HEMOSTASIS 
+                                     31.50406 
+          REACTOME_SIGNALING_IN_IMMUNE_SYSTEM 
+                                     30.68054 
+         REACTOME_OLFACTORY_SIGNALING_PATHWAY 
+                                     30.49469 
 ```
 
 
@@ -257,7 +277,7 @@ Let's define a function called `plotGS` to produce a scatter plot, for a given g
 
 
 ```r
-plotGS <- function(se, gs, pheno, ...) {
+plotGS <- function(se, gs, pheno,dge, ...) {
 l <- levels(colData(se)[, pheno])
 idxSamples1 <- colData(se)[, pheno] == l[1]
 idxSamples2 <- colData(se)[, pheno] == l[2]
@@ -267,6 +287,8 @@ rng <- range(c(exps1, exps2))
 plot(exps1, exps2, pch = 21, col = "black", bg = "black", xlim = rng, ylim = rng,
 xlab = l[1], ylab = l[2], ...)
 abline(a = 0, b = 1, lwd = 2, col = "red")
+nn<-dge[rownames(dge$genes) %in% gs,]$genes$symbol
+text(exps1, exps2, labels = nn, cex = 0.8, pos=2)
 }
 ```
 
@@ -290,381 +312,172 @@ length(DEgs)
 ```
 
 ```
-[1] 95
+[1] 94
 ```
 
 ```r
-head(DEgs, n = 10)
+head(DEgs, n = 30)
 ```
 
 ```
- [1] "KEGG_GLYCOLYSIS_GLUCONEOGENESIS"          
- [2] "KEGG_FATTY_ACID_METABOLISM"               
- [3] "KEGG_STEROID_HORMONE_BIOSYNTHESIS"        
- [4] "KEGG_PURINE_METABOLISM"                   
- [5] "KEGG_PYRIMIDINE_METABOLISM"               
- [6] "KEGG_ARGININE_AND_PROLINE_METABOLISM"     
- [7] "KEGG_TYROSINE_METABOLISM"                 
- [8] "KEGG_RETINOL_METABOLISM"                  
- [9] "KEGG_PORPHYRIN_AND_CHLOROPHYLL_METABOLISM"
-[10] "KEGG_NITROGEN_METABOLISM"                 
+ [1] "KEGG_GLYCOLYSIS_GLUCONEOGENESIS"                  
+ [2] "KEGG_FATTY_ACID_METABOLISM"                       
+ [3] "KEGG_STEROID_HORMONE_BIOSYNTHESIS"                
+ [4] "KEGG_PURINE_METABOLISM"                           
+ [5] "KEGG_PYRIMIDINE_METABOLISM"                       
+ [6] "KEGG_ARGININE_AND_PROLINE_METABOLISM"             
+ [7] "KEGG_RETINOL_METABOLISM"                          
+ [8] "KEGG_PORPHYRIN_AND_CHLOROPHYLL_METABOLISM"        
+ [9] "KEGG_METABOLISM_OF_XENOBIOTICS_BY_CYTOCHROME_P450"
+[10] "KEGG_DRUG_METABOLISM_CYTOCHROME_P450"             
+[11] "KEGG_DRUG_METABOLISM_OTHER_ENZYMES"               
+[12] "KEGG_ABC_TRANSPORTERS"                            
+[13] "KEGG_MAPK_SIGNALING_PATHWAY"                      
+[14] "KEGG_CALCIUM_SIGNALING_PATHWAY"                   
+[15] "KEGG_CYTOKINE_CYTOKINE_RECEPTOR_INTERACTION"      
+[16] "KEGG_CHEMOKINE_SIGNALING_PATHWAY"                 
+[17] "KEGG_NEUROACTIVE_LIGAND_RECEPTOR_INTERACTION"     
+[18] "KEGG_CELL_CYCLE"                                  
+[19] "KEGG_OOCYTE_MEIOSIS"                              
+[20] "KEGG_UBIQUITIN_MEDIATED_PROTEOLYSIS"              
+[21] "KEGG_LYSOSOME"                                    
+[22] "KEGG_ENDOCYTOSIS"                                 
+[23] "KEGG_APOPTOSIS"                                   
+[24] "KEGG_WNT_SIGNALING_PATHWAY"                       
+[25] "KEGG_NOTCH_SIGNALING_PATHWAY"                     
+[26] "KEGG_HEDGEHOG_SIGNALING_PATHWAY"                  
+[27] "KEGG_TGF_BETA_SIGNALING_PATHWAY"                  
+[28] "KEGG_AXON_GUIDANCE"                               
+[29] "KEGG_FOCAL_ADHESION"                              
+[30] "KEGG_CELL_ADHESION_MOLECULES_CAMS"                
 ```
-After filtering by *adjusted p value* we obtained a total of 516 gene sets. 
+After filtering by *adjusted p value* we obtained a total of 94 gene sets.
 
-As mentioned before, since gene sets can overlap, we need to take that into account before interpreting the DE gene sets. In order to do so, we use the function `computeGeneSetsOverlap` which calculates an overlap index. Then, we are going to build a table ranking of pairs of gene sets by overlaps.
-
-
-```r
-gsov <- computeGeneSetsOverlap(gsc[DEgs], rownames(coadse.filt))
-trimask <- upper.tri(gsov)
-rnkOv <- data.frame(gs1 = row(gsov)[trimask], gs2 = col(gsov)[trimask], ov = gsov[trimask])
-rnkOv <- rnkOv[order(rnkOv$ov, decreasing = TRUE), ]
-rnkOv$gs1 <- rownames(gsov)[rnkOv$gs1]
-rnkOv$gs2 <- rownames(gsov)[rnkOv$gs2]
-## how many pairs of gene sets are identical?
-sum(rnkOv$ov == 1) 
-```
-
-```
-[1] 31
-```
-
-```r
-## how many pairs of gene sets share less than 5% of the genes?
-sum(rnkOv$ov < 0.05)
-```
-
-```
-[1] 3707
-```
-There are 31 pairs of gene sets that are identical, and 3707 pairs that share less than 5% of the genes.
-
-If half of the genes are upregulated and the other half down-regulated, the mean shift we have calculated cancels out. This is known as a change in scale, and to detect such a change one should used this other X^2-score:
+Now, we plot the mean expression values per gene for 6 gene sets of interest selected by the Z-score.
 
 
 ```r
-xS <- applyByCategory(tGSgenes, Im, function(x) (sum((x - mean(x))^2) - (length(x) - 1))/(2 * 
-(length(x) - 1)))
-xS
-```
-
-```
-                                      KEGG_GLYCOLYSIS_GLUCONEOGENESIS 
-                                                          127.9963682 
-                                           KEGG_FATTY_ACID_METABOLISM 
-                                                           72.7751915 
-                                    KEGG_STEROID_HORMONE_BIOSYNTHESIS 
-                                                           96.3966791 
-                                               KEGG_PURINE_METABOLISM 
-                                                          150.9491569 
-                                           KEGG_PYRIMIDINE_METABOLISM 
-                                                            2.5448526 
-                                 KEGG_ARGININE_AND_PROLINE_METABOLISM 
-                                                           91.9210003 
-                                             KEGG_TYROSINE_METABOLISM 
-                                                            5.3240316 
-                                              KEGG_RETINOL_METABOLISM 
-                                                           72.0141088 
-                            KEGG_PORPHYRIN_AND_CHLOROPHYLL_METABOLISM 
-                                                           74.5081420 
-                                             KEGG_NITROGEN_METABOLISM 
-                                                           14.3609116 
-                    KEGG_METABOLISM_OF_XENOBIOTICS_BY_CYTOCHROME_P450 
-                                                           61.4029422 
-                                 KEGG_DRUG_METABOLISM_CYTOCHROME_P450 
-                                                           84.3969446 
-                                   KEGG_DRUG_METABOLISM_OTHER_ENZYMES 
-                                                           30.6336225 
-                                                KEGG_ABC_TRANSPORTERS 
-                                                           47.3454111 
-                                          KEGG_MAPK_SIGNALING_PATHWAY 
-                                                           76.9250845 
-                                       KEGG_CALCIUM_SIGNALING_PATHWAY 
-                                                           26.4075932 
-                          KEGG_CYTOKINE_CYTOKINE_RECEPTOR_INTERACTION 
-                                                           77.3351282 
-                                     KEGG_CHEMOKINE_SIGNALING_PATHWAY 
-                                                           75.9030311 
-                         KEGG_NEUROACTIVE_LIGAND_RECEPTOR_INTERACTION 
-                                                           42.8504530 
-                                                      KEGG_CELL_CYCLE 
-                                                          107.7177903 
-                                                  KEGG_OOCYTE_MEIOSIS 
-                                                           72.6071955 
-                                  KEGG_UBIQUITIN_MEDIATED_PROTEOLYSIS 
-                                                           59.0254260 
-                                                        KEGG_LYSOSOME 
-                                                           45.9182413 
-                                                     KEGG_ENDOCYTOSIS 
-                                                           98.1203438 
-                                                       KEGG_APOPTOSIS 
-                                                            0.5184568 
-                                           KEGG_WNT_SIGNALING_PATHWAY 
-                                                           63.5880621 
-                                         KEGG_NOTCH_SIGNALING_PATHWAY 
-                                                            8.0925615 
-                                      KEGG_HEDGEHOG_SIGNALING_PATHWAY 
-                                                           50.8295406 
-                                      KEGG_TGF_BETA_SIGNALING_PATHWAY 
-                                                           58.3546351 
-                                                   KEGG_AXON_GUIDANCE 
-                                                          100.2966209 
-                                                  KEGG_FOCAL_ADHESION 
-                                                           38.7282650 
-                                    KEGG_CELL_ADHESION_MOLECULES_CAMS 
-                                                           71.1941093 
-                                               KEGG_ADHERENS_JUNCTION 
-                                                           95.3612974 
-                                                  KEGG_TIGHT_JUNCTION 
-                                                          116.9793910 
-                                      KEGG_JAK_STAT_SIGNALING_PATHWAY 
-                                                          113.6064367 
-                                      KEGG_HEMATOPOIETIC_CELL_LINEAGE 
-                                                          100.2904749 
-                       KEGG_NATURAL_KILLER_CELL_MEDIATED_CYTOTOXICITY 
-                                                            6.3705499 
-                               KEGG_T_CELL_RECEPTOR_SIGNALING_PATHWAY 
-                                                            1.1476094 
-                            KEGG_LEUKOCYTE_TRANSENDOTHELIAL_MIGRATION 
-                                                          114.0796417 
-                                          KEGG_LONG_TERM_POTENTIATION 
-                                                            3.4946975 
-                                          KEGG_OLFACTORY_TRANSDUCTION 
-                                                           75.7823410 
-                                KEGG_REGULATION_OF_ACTIN_CYTOSKELETON 
-                                                           92.2821087 
-                                       KEGG_INSULIN_SIGNALING_PATHWAY 
-                                                           65.1985614 
-                                                   KEGG_MELANOGENESIS 
-                                                          103.4303362 
-                       KEGG_ALDOSTERONE_REGULATED_SODIUM_REABSORPTION 
-                                                           12.0186593 
-                         KEGG_PROXIMAL_TUBULE_BICARBONATE_RECLAMATION 
-                                                          108.1779400 
-                                              KEGG_ALZHEIMERS_DISEASE 
-                                                            2.1450286 
-                               KEGG_AMYOTROPHIC_LATERAL_SCLEROSIS_ALS 
-                                                            2.1259886 
-                                              KEGG_PATHWAYS_IN_CANCER 
-                                                           96.8844567 
-                                                 KEGG_PROSTATE_CANCER 
-                                                           15.6276414 
-                                            KEGG_BASAL_CELL_CARCINOMA 
-                                                          130.3031474 
-                                                   REACTOME_APOPTOSIS 
-                                                           11.4105426 
-                                               REACTOME_AXON_GUIDANCE 
-                                                          147.2084915 
-                                       REACTOME_BIOLOGICAL_OXIDATIONS 
-                                                           72.8524616 
-          REACTOME_CDC20_PHOSPHO_APC_MEDIATED_DEGRADATION_OF_CYCLIN_A 
-                                                          129.9255054 
-                                  REACTOME_CELL_CELL_ADHESION_SYSTEMS 
-                                                          134.5525025 
-                                          REACTOME_CELL_CYCLE_MITOTIC 
-                                                           77.3926401 
-              REACTOME_CELL_SURFACE_INTERACTIONS_AT_THE_VASCULAR_WALL 
-                                                            9.0767511 
-                         REACTOME_CHEMOKINE_RECEPTORS_BIND_CHEMOKINES 
-                                                           73.8297672 
-                           REACTOME_CLASS_A1_RHODOPSIN_LIKE_RECEPTORS 
-                                                           81.7338351 
-                          REACTOME_CLASS_B2_SECRETIN_FAMILY_RECEPTORS 
-                                                          142.9814770 
-                  REACTOME_CYTOCHROME_P450_ARRANGED_BY_SUBSTRATE_TYPE 
-                                                           48.9580755 
-                                           REACTOME_DIABETES_PATHWAYS 
-                                                           65.9566004 
-                         REACTOME_DOWNSTREAM_EVENTS_IN_GPCR_SIGNALING 
-                                                           78.4021305 
-                                  REACTOME_FORMATION_OF_PLATELET_PLUG 
-                                                            6.3068883 
-                                 REACTOME_G_ALPHA_I_SIGNALLING_EVENTS 
-                                                           94.0754926 
-                                 REACTOME_G_ALPHA_Q_SIGNALLING_EVENTS 
-                                                           73.4652864 
-                                 REACTOME_G_ALPHA_S_SIGNALLING_EVENTS 
-                                                           61.5818232 
-                                             REACTOME_G1_S_TRANSITION 
-                                                            8.6873494 
-                                             REACTOME_GENE_EXPRESSION 
-                                                           33.2960387 
-                                                  REACTOME_HEMOSTASIS 
-                                                            6.9412071 
-                                               REACTOME_HIV_INFECTION 
-                                                           60.1831505 
-                            REACTOME_HOST_INTERACTIONS_OF_HIV_FACTORS 
-                                                            8.4782436 
-                            REACTOME_INTEGRATION_OF_ENERGY_METABOLISM 
-                                                           73.4324003 
-                          REACTOME_INTEGRIN_CELL_SURFACE_INTERACTIONS 
-                                                           52.7027809 
-                                          REACTOME_IRS_RELATED_EVENTS 
-                                                           74.6026838 
-                                    REACTOME_METABLISM_OF_NUCLEOTIDES 
-                                                          140.6874712 
-                                   REACTOME_METABOLISM_OF_AMINO_ACIDS 
-                                                          129.3985534 
-                       REACTOME_METABOLISM_OF_LIPIDS_AND_LIPOPROTEINS 
-                                                           56.2519791 
-                                      REACTOME_METABOLISM_OF_PROTEINS 
-                                                           10.4539021 
-                                        REACTOME_MITOTIC_PROMETAPHASE 
-                                                           90.7502492 
-                                          REACTOME_MUSCLE_CONTRACTION 
-                                                           87.7824626 
-                                 REACTOME_OLFACTORY_SIGNALING_PATHWAY 
-                                                           70.2250076 
-                        REACTOME_P75_NTR_RECEPTOR_MEDIATED_SIGNALLING 
-                                                            4.5644952 
-                            REACTOME_PEPTIDE_LIGAND_BINDING_RECEPTORS 
-                                                           88.1713729 
-                      REACTOME_PHASE_1_FUNCTIONALIZATION_OF_COMPOUNDS 
-                                                           67.5621829 
-                                         REACTOME_PLATELET_ACTIVATION 
-                                                            6.9610745 
-REACTOME_REGULATION_OF_APC_ACTIVATORS_BETWEEN_G1_S_AND_EARLY_ANAPHASE 
-                                                          105.4508970 
-                                            REACTOME_SIGNALING_BY_WNT 
-                                                           17.3270372 
-                                  REACTOME_SIGNALING_IN_IMMUNE_SYSTEM 
-                                                            8.2547903 
-                                           REACTOME_SIGNALLING_BY_NGF 
-                                                            5.6401023 
-                                 REACTOME_TIGHT_JUNCTION_INTERACTIONS 
-                                                          138.0531277 
-                  REACTOME_TRANSMEMBRANE_TRANSPORT_OF_SMALL_MOLECULES 
-                                                           69.9712539 
-                       REACTOME_TRANSMISSION_ACROSS_CHEMICAL_SYNAPSES 
-                                                           81.9174522 
-                                         REACTOME_GPCR_LIGAND_BINDING 
-                                                           85.3744210 
-                                  REACTOME_CELL_JUNCTION_ORGANIZATION 
-                                                          139.8422436 
-                                       REACTOME_MITOTIC_M_M_G1_PHASES 
-                                                           67.1377633 
-```
-
-As we did with the z-test, we are going to compute p-values and adjust them to 1% FDR for gene sets with more than about 20 genes:
-
-
-```r
-rnkGS <- sort(abs(xS), decreasing = TRUE)
-head(rnkGS, n=20)
-```
-
-```
-                                               KEGG_PURINE_METABOLISM 
-                                                             150.9492 
-                                               REACTOME_AXON_GUIDANCE 
-                                                             147.2085 
-                          REACTOME_CLASS_B2_SECRETIN_FAMILY_RECEPTORS 
-                                                             142.9815 
-                                    REACTOME_METABLISM_OF_NUCLEOTIDES 
-                                                             140.6875 
-                                  REACTOME_CELL_JUNCTION_ORGANIZATION 
-                                                             139.8422 
-                                 REACTOME_TIGHT_JUNCTION_INTERACTIONS 
-                                                             138.0531 
-                                  REACTOME_CELL_CELL_ADHESION_SYSTEMS 
-                                                             134.5525 
-                                            KEGG_BASAL_CELL_CARCINOMA 
-                                                             130.3031 
-          REACTOME_CDC20_PHOSPHO_APC_MEDIATED_DEGRADATION_OF_CYCLIN_A 
-                                                             129.9255 
-                                   REACTOME_METABOLISM_OF_AMINO_ACIDS 
-                                                             129.3986 
-                                      KEGG_GLYCOLYSIS_GLUCONEOGENESIS 
-                                                             127.9964 
-                                                  KEGG_TIGHT_JUNCTION 
-                                                             116.9794 
-                            KEGG_LEUKOCYTE_TRANSENDOTHELIAL_MIGRATION 
-                                                             114.0796 
-                                      KEGG_JAK_STAT_SIGNALING_PATHWAY 
-                                                             113.6064 
-                         KEGG_PROXIMAL_TUBULE_BICARBONATE_RECLAMATION 
-                                                             108.1779 
-                                                      KEGG_CELL_CYCLE 
-                                                             107.7178 
-REACTOME_REGULATION_OF_APC_ACTIVATORS_BETWEEN_G1_S_AND_EARLY_ANAPHASE 
-                                                             105.4509 
-                                                   KEGG_MELANOGENESIS 
-                                                             103.4303 
-                                                   KEGG_AXON_GUIDANCE 
-                                                             100.2966 
-                                      KEGG_HEMATOPOIETIC_CELL_LINEAGE 
-                                                             100.2905 
-```
-
-```r
-pv <- pmin(pnorm(xS), 1 - pnorm(xS))
-pvadj <- p.adjust(pv)
-DEgsByScale <- names(pvadj)[which(pvadj < 0.01)]
-head(setdiff(DEgsByScale, DEgs), n=5)
-```
-
-```
-[1] "REACTOME_CHEMOKINE_RECEPTORS_BIND_CHEMOKINES"
-[2] "REACTOME_TIGHT_JUNCTION_INTERACTIONS"        
-```
-
-```r
-length(DEgsByScale)
-```
-
-```
-[1] 92
-```
-
-```r
-length(intersect(DEgs, DEgsByScale))
-```
-
-```
-[1] 90
-```
-
-These are the top 6 gene sets selected by the ChiSquared-score test:
-
-```r
-topgs1genes <- colnames(Im)[which(Im[names(rnkGS)[1], ] == 1)]
-genesGS1 <- rowData(coadse.filt)[topgs1genes,1]
+top1G <- colnames(Im)[which(Im[names(rnkGS_Z)[1], ] == 1)]
+genesGS1 <- rowData(coadse.filt)[top1G,1] # to know the gene symbol
 genesGS1
 ```
 
 ```
-[1] "NT5C2"  "AK1"    "AMPD3"  "ATIC"   "ENTPD8" "PAICS"  "ADCY5"  "NT5M"  
-[9] "ENTPD3"
+ [1] "ADCY5"     "PDPK1"     "RASGRF2"   "GSK3A"     "ADCYAP1R1" "HDAC2"    
+ [7] "PSEN1"     "RAPGEF1"   "ITGB3BP"   "MEF2A"     "RTN4"      "PCSK6"    
 ```
 
 ```r
-  topgs2genes <- colnames(Im)[which(Im[names(rnkGS)[2], ] == 1)]
-genesGS2 <- rowData(coadse.filt)[topgs2genes,1]
-topgs3genes <- colnames(Im)[which(Im[names(rnkGS)[3], ] == 1)]
-genesGS3 <- rowData(coadse.filt)[topgs3genes,1]
-topgs4genes <- colnames(Im)[which(Im[names(rnkGS)[4], ] == 1)]
-genesGS4 <- rowData(coadse.filt)[topgs4genes,1]
-topgs5genes <- colnames(Im)[which(Im[names(rnkGS)[5], ] == 1)]
-genesGS5 <- rowData(coadse.filt)[topgs5genes,1]
-topgs6genes <- colnames(Im)[which(Im[names(rnkGS)[6], ] == 1)]
-genesGS6 <- rowData(coadse.filt)[topgs6genes,1]
-par(mfrow = c(2, 3), mar= c(0.5,5,2,0.5), mai=c(0.5,0.6,0.6,0.5))
-plotGS(coadse.filt, topgs1genes, "type", main = names(rnkGS)[1],cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, topgs2genes, "type", main = names(rnkGS)[2],cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[3],cex.main = 0.8, cex.lab = 2, las = 1)
-plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[4],cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[5],cex.main = 0.7, cex.lab = 2, las = 1)
-plotGS(coadse.filt, topgs3genes, "type", main = names(rnkGS)[6],cex.main = 0.7, cex.lab = 2, las = 1)
+top2G <- colnames(Im)[which(Im[names(rnkGS_Z)[2], ] == 1)]
+genesGS2 <- rowData(coadse.filt)[top2G,1]
+genesGS2
+```
+
+```
+ [1] "CHRM1"     "GRIN2D"    "HTR4"      "PTAFR"     "PTGER4"    "AGTR2"    
+ [7] "GALR1"     "ADCYAP1R1" "OPRK1"     "GABRA4"    "GPR50"     "TAAR8"    
+[13] "GRM4"     
+```
+
+```r
+top10G <- colnames(Im)[which(Im[names(rnkGS_Z)[10], ] == 1)]
+genesGS10 <- rowData(coadse.filt)[top10G,1]
+genesGS10
+```
+
+```
+ [1] "PPP3R2"  "PPP3CC"  "CHP1"    "CREBBP"  "EP300"   "BTRC"    "PPP2R5E"
+ [8] "FZD6"    "FZD7"    "FZD9"    "AXIN2"   "WNT16"   "WNT10A"  "PSEN1"  
+```
+
+```r
+top15G <- colnames(Im)[which(Im[names(rnkGS_Z)[15], ] == 1)]
+genesGS15 <- rowData(coadse.filt)[top15G,1]
+genesGS15
+```
+
+```
+[1] "PDPK1"   "RASGRP2" "PDGFA"   "PDGFB"   "PSAP"    "DAGLA"   "HRG"    
+```
+
+```r
+top37G <- colnames(Im)[which(Im[names(rnkGS_Z)[37], ] == 1)]
+genesGS37 <- rowData(coadse.filt)[top37G,1]
+genesGS37
+```
+
+```
+ [1] "PSMC6"   "PSMB7"   "PSMD5"   "CLASP1"  "NUP85"   "CENPA"   "ITGB3BP"
+ [8] "KIF20A"  "NSL1"    "CLIP1"  
+```
+
+```r
+par(mfrow = c(3, 2), mar= c(2,5,2,2), mai=c(0.5,0.6,0.6,1))
+plotGS(coadse.filt, top1G, "type", main = paste("1)",names(rnkGS_Z)[1]),dge.filt,  cex.main = 2, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top2G, "type", main = paste("2)",names(rnkGS_Z)[2]),dge.filt, cex.main = 2, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top10G, "type", main = paste("3)", names(rnkGS_Z)[10]), dge.filt, cex.main = 2, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top15G, "type", main = paste("4)",names(rnkGS_Z)[15]),dge.filt, cex.main = 2, cex.lab = 2, las = 1)
+plotGS(coadse.filt, top37G, "type", main = paste("5)",names(rnkGS_Z)[37]),dge.filt, cex.main = 2, cex.lab = 2, las = 1)
 ```
 
 <div class="figure" style="text-align: center">
-<img src="FEanalysis_files/figure-html/scatter_plot-1.png" alt="Scatter plots" width="100%" />
-<p class="caption">(\#fig:scatter_plot)Scatter plots</p>
+<img src="FEanalysis_files/figure-html/sp-1.png" alt="Scatter Plots of mean expression values for genesets of interests" width="900px" />
+<p class="caption">(\#fig:sp)Scatter Plots of mean expression values for genesets of interests</p>
 </div>
 
-As we can see in \@ref(fig:scatter_plot), there are represented the 6 gene sets with a higher ChiSquared-score. 
+We can observe that in the selected genesets the distribution of the genes is mainly downregulated in tumor cases respect to normal. In general, gene downregulation in cancer could possibly be the cause of dysregulation of important pathways, repression of apoptosis or tumor suppressors' repression.
+
+Now we want to investigate the specific genes that are up- and down-regulated.
+
+In the plot 1 of figure \@ref(fig:sp), we can observe an overexpression of the MEF2A transcription factor myocyte-enhancer factor 2 known to play a role in adaptive responses during development and adult life. Even if the specific role in tumorgenesis of the MEF2 family has not been clarified yet, it has been identified that it can favor matrix degradative processes when its activation is promoted by TGF-Beta by decreasing the stability of HDACs @di2018mef2. Consistently with this scenario we observe an underexpression of the HDAC2 gene, which competes for binding to the same region of MEF2.
+ 
+In the plot 2 of figure \@ref(fig:sp)  we observe an overexpression of the HT receptor (HTR4) which is involved in the neuronal response with the serotonergic synapse pathway @arese2018tumor. HT receptors have been shown to be over expressed in cancer tissues and that their antagonists inhibit the HT effect to different extents and induce apoptosis @radin2017current.
+
+In plot 3 of figure \@ref(fig:sp) we can identify an overexpression of two Frizzled Receptors(FZD7 and FZD9). FZD9 expression was reported to be upregulated in different carcinomas @qiu2016overexpression. Moreover, a dysregulation of the WNT pathway by FZD7 was related to tumorigenesis and metastasis. As mentioned, a possible disregulation of the WNT pathway is induced by the Frizzled Receptors; consistently to this we observe that expression levels of WNT10a and WNT6 are affected as well in tumor patients. A desregulation in Wnt pathway has been associated with the accumulation of the oncogenic protein beta-catein, and therefore, with the development of cancer @fearon2011molecular.   
+
+In plot 4 of figure \@ref(fig:sp) we identify an overexpression of the PDGF-B gene.In a mice study was identified that PDGF-B released from colon tumor cells regulated tumor growth by inducing blood vessel formation. Also they found that an elevated expression of PDGF-B was also correlated with tumor size @hsu1995platelet.
+
+In plot 5 of figure \@ref(fig:sp) we identify an overexpression of the CENPA gene. Recent work has demonstrated that the kinetochore protein CENP-A was overexpressed in all of 11 primary human colorectal cancer tissues. It is also known that chromosome missegregation during mitosis is the main cause of aneuploidy and contributes to oncogenesis. Centromere protein (CENP)-A is the centromere-specific histone-H3-like variant essential for centromere structure, function and the assembly of the kinetochore @tomonaga2003overexpression.
 
 
+```r
+boxplotgenes <- function(se, gene) {
+  iterations = dim(se)[2]
+  variables = 2
+  output <- matrix(ncol=variables, nrow=iterations)
+  output <- data.frame(output)
+  colnames(output) <- c("type", "logCPM")
+  aa <- se[rowData(se)$symbol == gene]$type
+  bb<-assays(se[rowData(se)$symbol == gene])$logCPM
+  for(i in 1:iterations){
+  output$type[i] <- aa[i]
+  output$logCPM[i] <- bb[i]
+  }
+  output$type<-gsub(x = output$type, pattern = "1", replacement = "normal")
+  output$type<-gsub(x = output$type, pattern = "2", replacement = "tumor")
+  boxplot(logCPM ~ type, data=output, col=c("grey",rgb(0.7, 0.1, 0.3)), main=gene, ylab="logCPM")
+}
+```
+
+
+
+```r
+par(mfrow = c(3, 3), mar= c(2,5,2,2), mai=c(0.5,0.6,0.6,1))
+boxplotgenes(coadse.filt, "MEF2A")
+boxplotgenes(coadse.filt, "HDAC2")
+boxplotgenes(coadse.filt, "HTR4")
+boxplotgenes(coadse.filt, "FZD7")
+boxplotgenes(coadse.filt, "FZD9")
+boxplotgenes(coadse.filt, "PDGFB")
+boxplotgenes(coadse.filt, "CENPA")
+```
+
+<div class="figure" style="text-align: center">
+<img src="FEanalysis_files/figure-html/boxplot-1.png" alt="Boxplot of logCPM expression of genes of interest between tumor and normal samples" width="900px" />
+<p class="caption">(\#fig:boxplot)Boxplot of logCPM expression of genes of interest between tumor and normal samples</p>
+</div>
+
+In Figure \@ref(fig:boxplot) you can observe the boxplots for the logCPM expression values of the genes we just discussed between tumor and normal samples.
 
 ## Session information
 
@@ -690,25 +503,22 @@ attached base packages:
 [8] methods   base     
 
 other attached packages:
- [1] EnhancedVolcano_1.0.1       ggrepel_0.8.1              
- [3] ggplot2_3.1.1               calibrate_1.7.2            
- [5] MASS_7.3-51.4               sva_3.30.1                 
- [7] genefilter_1.64.0           mgcv_1.8-28                
- [9] nlme_3.1-139                GSVA_1.30.0                
-[11] GSVAdata_1.18.0             hgu95a.db_3.2.3            
-[13] GSEABase_1.44.0             org.Hs.eg.db_3.7.0         
-[15] xtable_1.8-4                GOstats_2.48.0             
-[17] graph_1.60.0                Category_2.48.1            
-[19] Matrix_1.2-17               geneplotter_1.60.0         
-[21] annotate_1.60.1             XML_3.98-1.19              
-[23] AnnotationDbi_1.44.0        lattice_0.20-38            
-[25] edgeR_3.24.3                limma_3.38.3               
-[27] SummarizedExperiment_1.12.0 DelayedArray_0.8.0         
-[29] BiocParallel_1.16.6         matrixStats_0.54.0         
-[31] Biobase_2.42.0              GenomicRanges_1.34.0       
-[33] GenomeInfoDb_1.18.2         IRanges_2.16.0             
-[35] S4Vectors_0.20.1            BiocGenerics_0.28.0        
-[37] knitr_1.22                  BiocStyle_2.10.0           
+ [1] ggplot2_3.1.1               calibrate_1.7.2            
+ [3] MASS_7.3-51.4               GSVA_1.30.0                
+ [5] GSVAdata_1.18.0             hgu95a.db_3.2.3            
+ [7] GSEABase_1.44.0             org.Hs.eg.db_3.7.0         
+ [9] xtable_1.8-4                GOstats_2.48.0             
+[11] graph_1.60.0                Category_2.48.1            
+[13] Matrix_1.2-17               geneplotter_1.60.0         
+[15] annotate_1.60.1             XML_3.98-1.19              
+[17] AnnotationDbi_1.44.0        lattice_0.20-38            
+[19] edgeR_3.24.3                limma_3.38.3               
+[21] SummarizedExperiment_1.12.0 DelayedArray_0.8.0         
+[23] BiocParallel_1.16.6         matrixStats_0.54.0         
+[25] Biobase_2.42.0              GenomicRanges_1.34.0       
+[27] GenomeInfoDb_1.18.2         IRanges_2.16.0             
+[29] S4Vectors_0.20.1            BiocGenerics_0.28.0        
+[31] knitr_1.22                  BiocStyle_2.10.0           
 
 loaded via a namespace (and not attached):
  [1] bitops_1.0-6           bit64_0.9-7            RColorBrewer_1.1-2    
@@ -716,19 +526,20 @@ loaded via a namespace (and not attached):
  [7] DBI_1.0.0              lazyeval_0.2.2         colorspace_1.4-1      
 [10] withr_2.1.2            tidyselect_0.2.5       bit_1.1-14            
 [13] compiler_3.5.3         bookdown_0.9           scales_1.0.0          
-[16] RBGL_1.58.2            stringr_1.4.0          digest_0.6.18         
-[19] rmarkdown_1.12         AnnotationForge_1.24.0 XVector_0.22.0        
-[22] pkgconfig_2.0.2        htmltools_0.3.6        highr_0.8             
-[25] rlang_0.3.4            RSQLite_2.1.1          shiny_1.3.2           
-[28] dplyr_0.8.1            RCurl_1.95-4.12        magrittr_1.5          
-[31] GO.db_3.7.0            GenomeInfoDbData_1.2.0 Rcpp_1.0.1            
-[34] munsell_0.5.0          stringi_1.4.3          yaml_2.2.0            
-[37] zlibbioc_1.28.0        plyr_1.8.4             grid_3.5.3            
-[40] blob_1.1.1             promises_1.0.1         crayon_1.3.4          
-[43] splines_3.5.3          locfit_1.5-9.1         pillar_1.3.1          
-[46] codetools_0.2-16       glue_1.3.1             evaluate_0.13         
-[49] BiocManager_1.30.4     httpuv_1.5.1           purrr_0.3.2           
-[52] gtable_0.3.0           assertthat_0.2.1       xfun_0.6              
-[55] mime_0.6               later_0.8.0            survival_2.44-1.1     
-[58] tibble_2.1.1           shinythemes_1.1.2      memoise_1.1.0         
+[16] genefilter_1.64.0      RBGL_1.58.2            stringr_1.4.0         
+[19] digest_0.6.18          rmarkdown_1.12         AnnotationForge_1.24.0
+[22] XVector_0.22.0         pkgconfig_2.0.2        htmltools_0.3.6       
+[25] highr_0.8              rlang_0.3.4            RSQLite_2.1.1         
+[28] shiny_1.3.2            dplyr_0.8.1            RCurl_1.95-4.12       
+[31] magrittr_1.5           GO.db_3.7.0            GenomeInfoDbData_1.2.0
+[34] Rcpp_1.0.1             munsell_0.5.0          stringi_1.4.3         
+[37] yaml_2.2.0             zlibbioc_1.28.0        plyr_1.8.4            
+[40] grid_3.5.3             blob_1.1.1             promises_1.0.1        
+[43] crayon_1.3.4           splines_3.5.3          locfit_1.5-9.1        
+[46] pillar_1.3.1           codetools_0.2-16       glue_1.3.1            
+[49] evaluate_0.13          BiocManager_1.30.4     httpuv_1.5.1          
+[52] gtable_0.3.0           purrr_0.3.2            assertthat_0.2.1      
+[55] xfun_0.6               mime_0.6               later_0.8.0           
+[58] survival_2.44-1.1      tibble_2.1.1           shinythemes_1.1.2     
+[61] memoise_1.1.0         
 ```

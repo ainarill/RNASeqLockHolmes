@@ -124,7 +124,7 @@ As is shown in this table, we finally found a total of **38 non-tumor** samples 
 Before proceeding with any normalization or analysis step, we want to collect an overview of
 the data that we are working with. Here we examine the sequencing depth by plotting the total number of reads mapped to the genome per sample.
 
-```{r libsizes, echo=FALSE, out.width="600px", fig.cap="Library sizes in increasing order."}
+```{r libsizes, echo=FALSE,  fig.cap="Library sizes in increasing order."}
 par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
 ord <- order(dge.paired$sample$lib.size)
 barplot(dge.paired$sample$lib.size[ord]/1e+06, las = 1, ylab = "Millions of reads", xlab = "Samples",
@@ -163,7 +163,7 @@ barplot(dge.paired$sample$lib.size[ord]/1e+06, las = 1, ylab = "Millions of read
         col = c("cyan", "orange")[coadse.paired$type[ord]] )
 legend("topleft", c("Normal", "Tumor"), fill = c("cyan", "orange"), inset = 0.01)
 ```
-Moreover, in figure \@ref(fig: libsize2) we can observe again the sorted histogram of library sizes per sample after the filtering.
+Moreover, in figure \@ref(fig:libsize2) we can observe again the sorted histogram of library sizes per sample after the filtering.
 
 ## Gender among samples
 
@@ -187,17 +187,17 @@ assays(coadse.paired)$logCPM <- cpm(dge.paired, log = TRUE, prior.count = 0.25)
 We are then interested in exploring the distribution of the expression levels through
 all the samples in terms of logarithmic CPM units.
 
-```{r disrRawExpAll, echo=FALSE, fig.height=4, fig.width=10, out.width="800px", fig.cap="Non-parametric density distribution of expression profiles per sample.", message=FALSE}
+```{r distRawExpAll, echo=FALSE, fig.height=4, fig.width=10, out.width="800px", fig.cap="Non-parametric density distribution of expression profiles per sample.", message=FALSE}
 library(geneplotter)
 par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
 multidensity(as.list(as.data.frame(assays(coadse.paired)$logCPM)), xlab = "log2 CPM", legend = NULL,
              main = "All samples", cex.axis = 1.2, cex.lab = 1.5, las = 1)
 ```
 
-In figure \@ref(fig:disrRawExpAll) we can observe a non-parametric density distribution of expression profiles per sample in terms of logarithmic units. As expected the expression values per sample follow a bimodal distribution with an early peak that corresponds to lowly-expressed genes and a later peak that correponds to highly-expressed ones.
+In figure \@ref(fig:distRawExpAll) we can observe a non-parametric density distribution of expression profiles per sample in terms of logarithmic units. As expected the expression values per sample follow a bimodal distribution with an early peak that corresponds to lowly-expressed genes and a later peak that correponds to highly-expressed ones.
 In order to provide a clearer visualization, we decided to divide the dataset into two smaller subsets, specifically tumor samples and normal samples.
 
-```{r disrRawExpComp, echo=FALSE, fig.height=4, fig.width=10, out.width="800px", fig.cap="Non-parametric density distribution of expression profiles per sample.", message=FALSE}
+```{r distRawExpComp, echo=FALSE, fig.height=4, fig.width=10, out.width="800px", fig.cap="Non-parametric density distribution of expression profiles per sample.", message=FALSE}
 tumor_mask <- coadse.paired$type == "tumor"
 non_tumor_mask <- coadse.paired$type == "normal"
 coadse_tumor <- coadse.paired[,tumor_mask]
@@ -217,7 +217,7 @@ Figure \@ref(fig:distRawExpComp) shows the expression levels in terms of logCPM 
 We are now interested in investigating if there is any gene which has very low expression
 values so that we can exclude them from our dataset. In fact, if a gene is not expressed, then it can not be differentially expressed and so including them in our analysis would only add noise.
 
-```{r exprdist, echo=FALSE, out.width="400px", fig.cap="Distribution of average expression level per gene."}
+```{r exprdist, echo=FALSE, fig.cap="Distribution of average expression level per gene."}
 avgexp <- rowMeans(assays(coadse.paired)$logCPM)
 par(mfrow = c(1, 1), mar = c(4, 5, 1, 1))
 hist(avgexp, xlab = expression(log[2] * "CPM"), main = "", las = 1, col = "gray")

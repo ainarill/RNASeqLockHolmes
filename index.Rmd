@@ -1,16 +1,18 @@
 ---
 title: "Analysis of a TCGA RNA-seq data set on Colon Adenocarcinoma"
 author:
-- name: Luisa Santus
+- name: Altair C. Hernandez
   affiliation:
   - &id Master Programme on Bioinformatics for Health Sciences, Universitat Pompeu Fabra,   Barcelona, Spain
-  email: luisa.santus01@estudiant.upf.edu
+  email: altair.chinchilla01@estudiant.upf.edu
 - name: Aina Rill
   affiliation: *id
   email: aina.rill01@estudiant.upf.edu
-- name: Alta??r C. Hern??ndez
+- name: Luisa Santus
   affiliation: *id
-  email: altair.chinchilla01@estudiant.upf.edu
+  email: luisa.santus01@estudiant.upf.edu
+
+
 date: "`r format(Sys.time(), '%B %e, %Y')`"
 output: 
   BiocStyle::html_document:
@@ -47,6 +49,8 @@ cat(readLines("DEanalysis.knit.md"), sep="\n")
 ```{r echo=FALSE, results='asis'}
 cat(readLines("FEanalysis.knit.md"), sep="\n")
 ```
+
+# Colorectal cancer Stages' analysis
 
 ```{r echo=FALSE, results='asis'}
 cat(readLines("QAanalysisTumor.knit.md"), sep="\n")

@@ -110,7 +110,6 @@ tt <- topTable(fit, coef = 2, n = Inf)
 genes<-table(as.character(sub("\\chr*", "",tt$chr[tt$adj.P.Val < FDRcutoff])))
 par(las=2) # make label text perpendicular to axis
 par(mar=c(5,8,4,2)) # increase y-axis margin.
-genesmd
 names.arg=c("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","X","Y","Un")
 barplot(genes,  cex.names=0.7, names.arg = names.arg, col=rgb(0.7, 0.1, 0.3))
 sort(table(tt$chr[tt$adj.P.Val < FDRcutoff]), decreasing = TRUE)

@@ -32,7 +32,7 @@ coadse.tumor <- readRDS(file.path("results", "coadse.tumor.filt.rds"))
 dge.tumor <- readRDS(file.path("results", "dge.tumor.filt.rds"))
 ```
 
-# Differential expression
+## Differential expression
 
 After having filtered and normalized our tumor dataset, we looked for differential expression of genes among the cancer stages.
 We applied a limma voom pipeline, the steps of which are explained in depth already in the paired DEanalysis section and for this reason here we only focus on the steps that differ in the new one.
@@ -66,9 +66,9 @@ summary(pca)
 dtp <- data.frame('Stages' = coadse.tumor$ajcc_pathologic_tumor_stage, pca$x[,1:2]) # the first two componets are selected (NB: you can also select 3 for 3D plottings or 3+)
 ggplot(data = dtp) + geom_point(aes(x = PC1, y = PC2, col = Stages)) + theme_minimal() 
 ```
-In Figure @ref(fig:pca) it seems that there is no differential expression among the stages. However, we decide to proceed with the GSE Analysis. In fact, there may be small but consistent changes in gene expression values which could still imply relevant changes between the different stages.
+In Figure \@ref(fig:pca) it seems that there is no differential expression among the stages. However, we decide to proceed with the GSE Analysis. In fact, there may be small but consistent changes in gene expression values which could still imply relevant changes between the different stages.
 
-## Session information
+### Session information
 
 ```{r, message=FALSE}
 sessionInfo()

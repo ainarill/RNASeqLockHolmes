@@ -14,7 +14,7 @@ and which are necessary in this file.
 
 
 
-# Differential expression
+## Differential expression
 
 After having filtered and normalized our tumor dataset, we looked for differential expression of genes among the cancer stages.
 We applied a limma voom pipeline, the steps of which are explained in depth already in the paired DEanalysis section and for this reason here we only focus on the steps that differ in the new one.
@@ -333,9 +333,9 @@ ggplot(data = dtp) + geom_point(aes(x = PC1, y = PC2, col = Stages)) + theme_min
 <img src="DEanalysisTumor_files/figure-html/pca-1.png" alt="PC 1 and PC 2 by cancer Stage" width="100%" />
 <p class="caption">(\#fig:pca)PC 1 and PC 2 by cancer Stage</p>
 </div>
-In Figure @ref(fig:pca) it seems that there is no differential expression among the stages. However, we decide to proceed with the GSE Analysis. In fact, there may be small but consistent changes in gene expression values which could still imply relevant changes between the different stages.
+In Figure \@ref(fig:pca) it seems that there is no differential expression among the stages. However, we decide to proceed with the GSE Analysis. In fact, there may be small but consistent changes in gene expression values which could still imply relevant changes between the different stages.
 
-## Session information
+### Session information
 
 
 ```r
@@ -364,20 +364,17 @@ other attached packages:
  [5] org.Hs.eg.db_3.7.0          xtable_1.8-4               
  [7] GOstats_2.48.0              graph_1.60.0               
  [9] Category_2.48.1             Matrix_1.2-17              
-[11] EnhancedVolcano_1.0.1       ggrepel_0.8.1              
-[13] sva_3.30.1                  genefilter_1.64.0          
-[15] mgcv_1.8-28                 nlme_3.1-139               
-[17] ggplot2_3.1.1               calibrate_1.7.2            
-[19] MASS_7.3-51.4               geneplotter_1.60.0         
-[21] annotate_1.60.1             XML_3.98-1.19              
-[23] AnnotationDbi_1.44.0        lattice_0.20-38            
-[25] edgeR_3.24.3                limma_3.38.3               
-[27] SummarizedExperiment_1.12.0 DelayedArray_0.8.0         
-[29] BiocParallel_1.16.6         matrixStats_0.54.0         
-[31] Biobase_2.42.0              GenomicRanges_1.34.0       
-[33] GenomeInfoDb_1.18.2         IRanges_2.16.0             
-[35] S4Vectors_0.20.1            BiocGenerics_0.28.0        
-[37] knitr_1.22                  BiocStyle_2.10.0           
+[11] ggplot2_3.1.1               calibrate_1.7.2            
+[13] MASS_7.3-51.4               geneplotter_1.60.0         
+[15] annotate_1.60.1             XML_3.98-1.19              
+[17] AnnotationDbi_1.44.0        lattice_0.20-38            
+[19] edgeR_3.24.3                limma_3.38.3               
+[21] SummarizedExperiment_1.12.0 DelayedArray_0.8.0         
+[23] BiocParallel_1.16.6         matrixStats_0.54.0         
+[25] Biobase_2.42.0              GenomicRanges_1.34.0       
+[27] GenomeInfoDb_1.18.2         IRanges_2.16.0             
+[29] S4Vectors_0.20.1            BiocGenerics_0.28.0        
+[31] knitr_1.22                  BiocStyle_2.10.0           
 
 loaded via a namespace (and not attached):
  [1] bitops_1.0-6           bit64_0.9-7            RColorBrewer_1.1-2    
@@ -385,20 +382,20 @@ loaded via a namespace (and not attached):
  [7] DBI_1.0.0              lazyeval_0.2.2         colorspace_1.4-1      
 [10] withr_2.1.2            tidyselect_0.2.5       bit_1.1-14            
 [13] compiler_3.5.3         labeling_0.3           bookdown_0.9          
-[16] scales_1.0.0           RBGL_1.58.2            stringr_1.4.0         
-[19] digest_0.6.18          rmarkdown_1.12         AnnotationForge_1.24.0
-[22] XVector_0.22.0         pkgconfig_2.0.2        htmltools_0.3.6       
-[25] highr_0.8              rlang_0.3.4            RSQLite_2.1.1         
-[28] shiny_1.3.2            dplyr_0.8.1            RCurl_1.95-4.12       
-[31] magrittr_1.5           GO.db_3.7.0            GenomeInfoDbData_1.2.0
-[34] Rcpp_1.0.1             munsell_0.5.0          stringi_1.4.3         
-[37] yaml_2.2.0             zlibbioc_1.28.0        plyr_1.8.4            
-[40] grid_3.5.3             blob_1.1.1             promises_1.0.1        
-[43] crayon_1.3.4           splines_3.5.3          locfit_1.5-9.1        
-[46] pillar_1.3.1           codetools_0.2-16       glue_1.3.1            
-[49] evaluate_0.13          BiocManager_1.30.4     httpuv_1.5.1          
-[52] gtable_0.3.0           purrr_0.3.2            assertthat_0.2.1      
-[55] xfun_0.6               mime_0.6               later_0.8.0           
-[58] survival_2.44-1.1      tibble_2.1.1           shinythemes_1.1.2     
-[61] memoise_1.1.0         
+[16] scales_1.0.0           genefilter_1.64.0      RBGL_1.58.2           
+[19] stringr_1.4.0          digest_0.6.18          rmarkdown_1.12        
+[22] AnnotationForge_1.24.0 XVector_0.22.0         pkgconfig_2.0.2       
+[25] htmltools_0.3.6        highr_0.8              rlang_0.3.4           
+[28] RSQLite_2.1.1          shiny_1.3.2            dplyr_0.8.1           
+[31] RCurl_1.95-4.12        magrittr_1.5           GO.db_3.7.0           
+[34] GenomeInfoDbData_1.2.0 Rcpp_1.0.1             munsell_0.5.0         
+[37] stringi_1.4.3          yaml_2.2.0             zlibbioc_1.28.0       
+[40] plyr_1.8.4             grid_3.5.3             blob_1.1.1            
+[43] promises_1.0.1         crayon_1.3.4           splines_3.5.3         
+[46] locfit_1.5-9.1         pillar_1.3.1           codetools_0.2-16      
+[49] glue_1.3.1             evaluate_0.13          BiocManager_1.30.4    
+[52] httpuv_1.5.1           gtable_0.3.0           purrr_0.3.2           
+[55] assertthat_0.2.1       xfun_0.6               mime_0.6              
+[58] later_0.8.0            survival_2.44-1.1      tibble_2.1.1          
+[61] shinythemes_1.1.2      memoise_1.1.0         
 ```

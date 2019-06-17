@@ -23,11 +23,11 @@ and the resulting projectTemplate.html to understand where this is being dumpted
 
 
 
-# Quality assessment
+## Quality assessment
 
 The Quality assessment for tumor data will be performed following the steps and the reasoning used in the Quality assesment for the paired data. For this reason, here we are only going to highlight the strategies that differ from the previous pipeline.
 
-## Subset of samples: Tumor data
+### Subset of samples: Tumor data
 
 From the total of samples before starting to analyse the data, we proceed to do a subset that only includes the tumor data. The reason of doing this is because we are interested also in the differential expression analysis between the different stages of the Colon Adenocarcinoma Cancer. 
 
@@ -53,7 +53,7 @@ table(coadse.tumor$ajcc_pathologic_tumor_stage)
        72       168       124        63 
 ```
 
-## Sequencing depth among tumor samples
+### Sequencing depth among tumor samples
 
 First of all, we want to collect an overview of the data that we are working with. Starting  examining the sequencing depth by plotting the total number of reads mapped to the genome per sample.
 
@@ -158,7 +158,7 @@ G4.6307 DM.A1D6 A6.6648 F4.6704
 ```
 
 <div class="figure" style="text-align: center">
-<img src="QAanalysisTumor_files/figure-html/libsizestumor-1.png" alt="Library sizes in increasing order." width="600px" />
+<img src="QAanalysisTumor_files/figure-html/libsizestumor-1.png" alt="Library sizes in increasing order." width="100%" />
 <p class="caption">(\#fig:libsizestumor)Library sizes in increasing order.</p>
 </div>
 
@@ -189,7 +189,7 @@ ggplot(as.data.frame(dge.tumor$samples), aes(x = row.names(dge.tumor$samples), y
 
 In this second plot(Figure \@ref(fig:libsizesfilt)) we can see the subset of data that we are going to use after having removed the samples with less coverage depth. In total,we have lost 21 samples from our dataset.
 
-## Gender among samples in tumor data
+### Gender among samples in tumor data
 
 
 ```r
@@ -216,38 +216,38 @@ legend("topleft", c("Female", "Male"), fill = c("cyan", "orange"), inset = 0.01)
 
 In the figure \@ref(fig:barplotgender) we can see that, as happened with the paired analysis, not only we have a similar number of female and male samples, but their sequencing depth is quite well equilibrated as we cannot clearly identify any defined clustering event.
 
-## Distribution of expression levels among samples in tumor data
+### Distribution of expression levels among samples in tumor data
 
 Then, we first run a within sample normalization and we also explore the distribution of the expression levels through all the samples in terms of logarithmic CPM units.
 
 <div class="figure" style="text-align: center">
-<img src="QAanalysisTumor_files/figure-html/disrRawExpAlTumorl-1.png" alt="Non-parametric density distribution of expression profiles per sample." width="800px" />
-<p class="caption">(\#fig:disrRawExpAlTumorl)Non-parametric density distribution of expression profiles per sample.</p>
+<img src="QAanalysisTumor_files/figure-html/distRawExpAllTumor-1.png" alt="Non-parametric density distribution of expression profiles per sample." width="800px" />
+<p class="caption">(\#fig:distRawExpAllTumor)Non-parametric density distribution of expression profiles per sample.</p>
 </div>
 
-In figure \@ref(fig:disrRawExpAllTumor) we can observe a non-parametric density distribution of expression profiles per sample which follows a bimodal distribution.
+In figure \@ref(fig:distRawExpAllTumor) we can observe a non-parametric density distribution of expression profiles per sample which follows a bimodal distribution.
 
 <div class="figure" style="text-align: center">
-<img src="QAanalysisTumor_files/figure-html/disrRawExpCompTumor-1.png" alt="Non-parametric density distribution of expression profiles per sample." width="800px" />
-<p class="caption">(\#fig:disrRawExpCompTumor)Non-parametric density distribution of expression profiles per sample.</p>
+<img src="QAanalysisTumor_files/figure-html/distRawExpCompTumor-1.png" alt="Non-parametric density distribution of expression profiles per sample." width="800px" />
+<p class="caption">(\#fig:distRawExpCompTumor)Non-parametric density distribution of expression profiles per sample.</p>
 </div>
 
 To provide a clearer visualization, we decided to divide the dataset into four smaller subsets, one for each stage. Figure \@ref(fig:distRawExpCompTumor) shows the expression levels in terms of logCPM for the different stages of tumor samples separately.
 
 As we do not observe extreme differences in the distribution of the expression values in the different tumor stages, we decide to not exclude any sample from the dataset in this step.
 
-## Distribution of expression levels among genes in tumor data
+### Distribution of expression levels among genes in tumor data
 
 We now want to look if there is any gene which has very low expression to exclude them from the dataset. 
 
 <div class="figure" style="text-align: center">
-<img src="QAanalysisTumor_files/figure-html/exprdisttumor-1.png" alt="Distribution of average expression level per gene." width="400px" />
+<img src="QAanalysisTumor_files/figure-html/exprdisttumor-1.png" alt="Distribution of average expression level per gene." width="100%" />
 <p class="caption">(\#fig:exprdisttumor)Distribution of average expression level per gene.</p>
 </div>
 
 In order to do so, we have calculated the average expression of each gene for all the samples and plotted their distribution in Figure \@ref(fig:exprdisttumor).
 
-## Filtering of lowly-expressed genes in tumor data
+### Filtering of lowly-expressed genes in tumor data
 
 Those genes that have very low counts should be removed prior to further analysis because a gene must be expressed at some minimal level before it is likely to be translated into a protein and also because genes statistically they are very unlikely to be assessed as significantly differential expressed. So, such genes can therefore be removed from the analysis without any loss of information.
 
@@ -324,7 +324,7 @@ legend("topright", c("All genes", "Filtered genes"), fill = c("grey", "darkred")
 
 We can visually observe which genes have been left out from the datatset in Figure \@ref(fig:histfilt).
 
-## Normalization tumor data
+### Normalization tumor data
 
 To make gene expression values comparable across samples, normalization step is needed to continue with our analysis.
 We estimate a normalization factor for each library using the Trimmed Mean of M-Values and we apply it to our data.
@@ -342,57 +342,39 @@ saveRDS(dge.tumor.filt, file.path("results", "dge.tumor.filt.rds"))
 ```
 
 
-## MA plots tumor data
+### MA plots tumor data
 
 We now want to visualize the expression profiles of the normalized data for each tumor stage. 
 
 For Stage I --> 
 <div class="figure" style="text-align: center">
 <img src="QAanalysisTumor_files/figure-html/maPlotsTumor1-1.png" alt="MA-plots of the tumor samples in Stage I." width="600" />
-<p class="caption">(\#fig:maPlotsTumor11)MA-plots of the tumor samples in Stage I.</p>
-</div><div class="figure" style="text-align: center">
-<img src="QAanalysisTumor_files/figure-html/maPlotsTumor1-2.png" alt="MA-plots of the tumor samples in Stage I." width="600" />
-<p class="caption">(\#fig:maPlotsTumor12)MA-plots of the tumor samples in Stage I.</p>
+<p class="caption">(\#fig:maPlotsTumor1)MA-plots of the tumor samples in Stage I.</p>
 </div>
+In Figure \@ref(fig:maPlotsTumor1) we observe the MA-plots for the Tumor samples of stage I. We can see that even after the between and within normalization steps, we still have some artifacts in our data as we can observe for example in \@ref(fig:maPlotsTumor1) A, C, F, AH and AT.
 
 For Stage II --> 
 <div class="figure" style="text-align: center">
 <img src="QAanalysisTumor_files/figure-html/maPlotsTumor2-1.png" alt="MA-plots of the tumor samples in Stage II." width="600" />
-<p class="caption">(\#fig:maPlotsTumor21)MA-plots of the tumor samples in Stage II.</p>
-</div><div class="figure" style="text-align: center">
-<img src="QAanalysisTumor_files/figure-html/maPlotsTumor2-2.png" alt="MA-plots of the tumor samples in Stage II." width="600" />
-<p class="caption">(\#fig:maPlotsTumor22)MA-plots of the tumor samples in Stage II.</p>
-</div><div class="figure" style="text-align: center">
-<img src="QAanalysisTumor_files/figure-html/maPlotsTumor2-3.png" alt="MA-plots of the tumor samples in Stage II." width="600" />
-<p class="caption">(\#fig:maPlotsTumor23)MA-plots of the tumor samples in Stage II.</p>
-</div><div class="figure" style="text-align: center">
-<img src="QAanalysisTumor_files/figure-html/maPlotsTumor2-4.png" alt="MA-plots of the tumor samples in Stage II." width="600" />
-<p class="caption">(\#fig:maPlotsTumor24)MA-plots of the tumor samples in Stage II.</p>
+<p class="caption">(\#fig:maPlotsTumor2)MA-plots of the tumor samples in Stage II.</p>
 </div>
-
+In Figure \@ref(fig:maPlotsTumor2) we observe the MA-plots for the Tumor samples of stage II. We can see that the majority of MA plots tend to follow the blue line with some exceptions like Figure \@ref(fig:maPlotsTumor2) B, E, F, N, AO, DM, DR, EI and EX.
 
 For Stage III --> 
 <div class="figure" style="text-align: center">
 <img src="QAanalysisTumor_files/figure-html/maPlotsTumor3-1.png" alt="MA-plots of the tumor samples in Stage III." width="600" />
-<p class="caption">(\#fig:maPlotsTumor31)MA-plots of the tumor samples in Stage III.</p>
-</div><div class="figure" style="text-align: center">
-<img src="QAanalysisTumor_files/figure-html/maPlotsTumor3-2.png" alt="MA-plots of the tumor samples in Stage III." width="600" />
-<p class="caption">(\#fig:maPlotsTumor32)MA-plots of the tumor samples in Stage III.</p>
-</div><div class="figure" style="text-align: center">
-<img src="QAanalysisTumor_files/figure-html/maPlotsTumor3-3.png" alt="MA-plots of the tumor samples in Stage III." width="600" />
-<p class="caption">(\#fig:maPlotsTumor33)MA-plots of the tumor samples in Stage III.</p>
+<p class="caption">(\#fig:maPlotsTumor3)MA-plots of the tumor samples in Stage III.</p>
 </div>
+In Figure \@ref(fig:maPlotsTumor3) we observe the MA-plots for the Tumor samples of stage III. With the samples of stage III we see a similar situation compared to the previous MA-plots; we can see that the red line of the majority of plots tends to follow the blue line with some exceptions like Figure \@ref(fig:maPlotsTumor3) J, K, AV, BB, BC, CT and DN.
 
 For Stage IV --> 
 <div class="figure" style="text-align: center">
 <img src="QAanalysisTumor_files/figure-html/maPlotsTumor4-1.png" alt="MA-plots of the tumor samples in Stage IV." width="600" />
-<p class="caption">(\#fig:maPlotsTumor41)MA-plots of the tumor samples in Stage IV.</p>
-</div><div class="figure" style="text-align: center">
-<img src="QAanalysisTumor_files/figure-html/maPlotsTumor4-2.png" alt="MA-plots of the tumor samples in Stage IV." width="600" />
-<p class="caption">(\#fig:maPlotsTumor42)MA-plots of the tumor samples in Stage IV.</p>
+<p class="caption">(\#fig:maPlotsTumor4)MA-plots of the tumor samples in Stage IV.</p>
 </div>
+Finally, in Figure \@ref(fig:maPlotsTumor4) we observe the MA-plots for the Tumor samples of stage IV. In this case, we observe again a similar situation; there are some plots were we can detect some artifacts, like for example J, M, V, AD, AI and AZ.
 
-## Batch Identification for tumor data.
+### Batch Identification for tumor data.
 
 As normalization of the data can not always remove completely the batch effect, the next step will be indeed the search of potential surrogate of batch effect indicators derived from different elements of the TCGA barcode of each sample.
 
@@ -528,7 +510,7 @@ legend("topright", legend=levels(factor(plate.tumor)),pch= batch, cex=0.75, ncol
 
 With the MDSplot in figure \@ref(fig:mds) we are still not able to recognize any cluster of any group, so we can not conclude that 'plate' information could be a potential surrogate of batch effect.
 
-## Session information
+### Session information
 
 
 ```r
